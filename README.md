@@ -20,7 +20,7 @@ then sends the processed data back to the Web page using `RTCDataChannel`
 in each `window`, see [telnet-client (user-defined-tcpsocket-controller-web-api branch)](https://github.com/guest271314/telnet-client), which is a
 fork of [telnet-client](https://github.com/GoogleChromeLabs/telnet-client).
 
-Now we will use the browser itself as a local HTTP and WebSocket server over the `TCPServerSocket` interface.
+Now we will use the browser itself as a HTTP and WebSocket server over the `TCPServerSocket` interface.
 
 ### HTTP server
 
