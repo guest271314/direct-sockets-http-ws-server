@@ -12,7 +12,7 @@ Previously we have created an IWA that we launch from arbitrary Web sites
 with [`open()`](https://html.spec.whatwg.org/multipage/window-object.html#dom-open-dev),
 including [SDP](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols#sdp)
 from a [`RTCDataChannel`](https://w3c.github.io/webrtc-pc/#rtcdatachannel) in query string of the URL,
-created in the arbitrary Web page, and exchanged signals with the `RTCDataChannel`
+created in the Web page, and exchanged signals with the `RTCDataChannel`
 created in the IWA `window` using [WICG File System Access](https://wicg.github.io/file-system-access/) for the
 ability to send data to the IWA which is then passed to a `TCPSocket` instance for 
 that sends the data to a Node.js, Deno, Bun, or txiki.js TCP socket server for processing, 
