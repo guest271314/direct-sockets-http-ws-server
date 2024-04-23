@@ -88,6 +88,10 @@ or
 deno run -A deno_install.js
 ```
 
+### Signed Web Bundle/Isolated Web App source files
+
+Entry point is `assets` directory which contains `index.html`, `script.js`, `.well-known` directory with `manifest.webmanifest`, and any other scripts or resources to be bundled. 
+
 ### Generate private and public keys, write to file system 
 
 This only has to be done once. `generateWebCryptoKeys.js` can be run with `node`, `deno`, or `bun`.
@@ -95,6 +99,36 @@ This only has to be done once. `generateWebCryptoKeys.js` can be run with `node`
 ```
 node --experimental-default-type=module generateWebCryptoKeys.js
 ```
+
+
+### Build the Signed Web Bundle and Isolated Web App
+
+Write `signed.swbn` to current directory
+
+Node.js 
+```
+node --experimental-default-type=module index.js
+```
+
+Bun
+```
+bun run index.js
+```
+
+Deno
+```
+deno run --unstable-byonm -A index.js
+```
+
+#### Dynamically fetch dependencies without creating a `node_modules` folder and create the `.swbn` file and IWA.
+
+```
+deno run -A --unstable-byonm --import-map=import-map.json index.js
+```
+
+### Install Isolated Web App using Signed Web Bundle
+
+Navigate to `chrome://web-app-internals/`, on the line beginning with `Install IWA from Signed Web Bundle:` click `Select file...` and select `signed.swbn`.
 
 ### Build/rebuild `wbn-bundle.js` from `src/index.ts` with `bun`
 
