@@ -124,10 +124,6 @@ deno run --unstable-byonm -A index.js
 deno run -A --unstable-byonm --import-map=import-map.json index.js
 ```
 
-### Install Isolated Web App using Signed Web Bundle
-
-Navigate to `chrome://web-app-internals/`, on the line beginning with `Install IWA from Signed Web Bundle:` click `Select file...` and select `signed.swbn`.
-
 ### Build/rebuild `wbn-bundle.js` from `src/index.ts` with `bun`
 
 ```
@@ -151,6 +147,11 @@ try {
   console.log(e);
 }
 ```
+
+## Install Isolated Web App using Signed Web Bundle
+
+Navigate to `chrome://web-app-internals/`, on the line beginning with `Install IWA from Signed Web Bundle:` click `Select file...` and select `signed.swbn`.
+
 ## Usage
 
 See `https.js` and `ws.js` in `examples` directory.
