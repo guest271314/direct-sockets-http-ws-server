@@ -4,7 +4,7 @@ HTTP and WebSocket server run from Chromium and Chrome browsers using Direct Soc
 ## Synopsis
 
 [WICG Direct Sockets](https://wicg.github.io/direct-sockets) specifies an API 
-that provides `TCPSocket`, `UDPSocket`, and `TCPServerSocket`.
+that provides `TCPSocket`, `UDPSocket`, and `TCPServerSocket`. Prior art: [chrome.socket](https://developer.chrome.com/docs/apps/reference/socket).
 
 In Chromium based browsers, for example Chrome, this capability is exposed in
 an [Isolated Web Apps](https://github.com/WICG/isolated-web-apps) (IWA).
@@ -38,8 +38,7 @@ We'll also note this claim on the MDN Web Docs page from [Client: the user-agent
 
 > The browser is **always** the entity initiating the request. It is never the server (though some mechanisms have been added over the years to simulate server-initiated messages).
 
-which is no longer the case, as we'll 
-demonstrate below, in code.
+is not technically accurate, as we'll demonstrate below, in code.
 
 Some further reading about HTTP can be found here [HTTP - Hypertext Transfer Protocol](https://www.w3.org/Protocols/).
 
