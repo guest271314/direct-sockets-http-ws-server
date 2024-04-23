@@ -6,8 +6,7 @@ HTTP and WebSocket server run from Chromium and Chrome browsers using Direct Soc
 [WICG Direct Sockets](https://wicg.github.io/direct-sockets) specifies an API 
 that provides `TCPSocket`, `UDPSocket`, and `TCPServerSocket`. Prior art: [chrome.socket](https://developer.chrome.com/docs/apps/reference/socket).
 
-In Chromium based browsers, for example Chrome, this capability is exposed in
-an [Isolated Web Apps](https://github.com/WICG/isolated-web-apps) (IWA).
+In Chromium based browsers, for example Chrome, this capability is exposed in [Isolated Web Apps](https://github.com/WICG/isolated-web-apps) (IWA).
 
 Previously we have created an IWA that we launch from arbitrary Web sites
 with [`open()`](https://html.spec.whatwg.org/multipage/window-object.html#dom-open-dev),
