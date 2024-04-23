@@ -1,0 +1,12 @@
+{
+  "imports": {
+    "base32-encode": "https://esm.sh/base32-encode@2.0.0",
+    "cborg": "https://esm.sh/cborg@1.10.2",
+    "commander": "https://esm.sh/commander@4.1.1",
+    "mime": "https://esm.sh/mime@2.6.0",
+    "to-data-view": "https://esm.sh/to-data-view@2.0.0",
+    "wbn": "https://esm.sh/wbn@0.0.9",
+    "wbn-sign-webcrypto": "https://raw.githubusercontent.com/guest271314/wbn-sign-webcrypto/main/lib/wbn-sign.js",
+    "zod": "https://esm.sh/zod@3.22.4"
+  }
+}

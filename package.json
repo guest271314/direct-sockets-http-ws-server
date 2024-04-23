@@ -1,0 +1,17 @@
+{
+  "name": "telnet-client",
+  "version": "0.0.2",
+  "description": "Generate Signed Web Bundle and Isolated Web App with Web Cryptography API to use Direct Sockets API",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/guest271314/telnet-client"
+  },
+  "dependencies": {
+    "base32-encode": "^2.0.0",
+    "mime": "^2.6.0",
+    "wbn": "^0.0.9",
+    "wbn-sign-webcrypto": "https://github.com/guest271314/wbn-sign-webcrypto.git",
+    "zod": "^3.22.4"
+  }
+}
