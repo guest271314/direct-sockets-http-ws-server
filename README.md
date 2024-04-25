@@ -60,7 +60,8 @@ For the WebSocket implementation [WebSocket - binary broadcast example (pure Nod
 
 ### TODO
 
-- Create valid close frame (server to client) for WebSocket server; currently we abort the request in the server with `AbortController` when the WebSocket client closes the connection
+- Create valid close frame (server to client) for WebSocket server; currently we abort the request in the server with `AbortController` when the WebSocket client closes the connection. Completed.
+- Substitute `ArrayBuffer`, `DataView`, `TypedArray` for Node.js Buffer polyfill
 - TLS and HTTP/2 support
 - Create Signed Web Bundle and Isolated Web App in the browser
 
