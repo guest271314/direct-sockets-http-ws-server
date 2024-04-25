@@ -1,16 +1,6 @@
 // TODO: TLS, HTTP/2
-import { Buffer } from "Buffer";
-// TODO: Substitute ArrayBuffer and DataView for Node.js Buffer polyfill
-// WebSocket implementation uses Node.js Buffer
-Buffer.prototype.readBigUint64BE = Buffer.prototype.readBigUInt64BE;
-globalThis.Buffer = Buffer;
-console.log(Buffer);
-
-// WebSocket implementation
-// https://gist.github.com/robertrypula/b813ffe23a9489bae1b677f1608676c8
 const debugBuffer = (bufferName, buffer) => {
   const length = buffer ? buffer.length : "---";
-
   console.log(`:: DEBUG - ${bufferName} | ${length} | `, buffer, "\n");
 };
 
@@ -49,29 +39,32 @@ const debugBuffer = (bufferName, buffer) => {
 
 const createWebSocketFrame = (payload) => {
   const payloadLengthByteCount = payload.length < 126 ? 0 : 2;
-  const buffer = Buffer.alloc(2 + payloadLengthByteCount + payload.length);
+  const buffer = new ArrayBuffer(2 + payloadLengthByteCount + payload.length);
+  const view = new DataView(buffer);
   let payloadOffset = 2;
 
   if (payload.length >= Math.pow(2, 16)) {
     throw new Error("Payload equal or bigger than 64 KiB is not supported");
   }
 
-  buffer.writeUInt8(0b10000010, 0); // FIN flag = 1, opcode = 2 (binary frame)
-  buffer.writeUInt8(payload.length < 126 ? payload.length : 126, 1);
-
+  view.setUint8(0, 0b10000010);
+  view.setUint8(1, payload.length < 126 ? payload.length : 126);
   if (payloadLengthByteCount > 0) {
-    buffer.writeUInt16BE(payload.length, 2);
+    view.setUint16(2, payload.length);
     payloadOffset += payloadLengthByteCount;
   }
 
-  payload.copy(buffer, payloadOffset);
-
+  for (let i = 0, j = payloadOffset; i < payload.length; i++, j++) {
+    view.setUint8(j, payload[i]);
+  }
   return buffer;
 };
 
 // ---------------------------------------------------------
 
 const getParsedBuffer = (buffer) => {
+  console.log({ buffer });
+  const view = new DataView(buffer.buffer);
   let bufferRemainingBytes;
   let currentOffset = 0;
   let maskingKey;
@@ -81,8 +74,8 @@ const getParsedBuffer = (buffer) => {
     return { payload: null, bufferRemainingBytes: buffer };
   }
 
-  const firstByte = buffer.readUInt8(currentOffset++);
-  const secondByte = buffer.readUInt8(currentOffset++);
+  const firstByte = view.getUint8(currentOffset++);
+  const secondByte = view.getUint8(currentOffset++)
   const isFinalFrame = !!((firstByte >>> 7) & 0x1);
   const opCode = firstByte & 0xf;
   const isMasked = !!((secondByte >>> 7) & 0x1); // https://security.stackexchange.com/questions/113297
@@ -110,7 +103,7 @@ const getParsedBuffer = (buffer) => {
       if (currentOffset + 2 > buffer.length) {
         return { payload: null, bufferRemainingBytes: buffer };
       }
-      payloadLength = buffer.readUInt16BE(currentOffset);
+      payloadLength = view.getUint16(currentOffset);
       currentOffset += 2;
     } else {
       throw new Error("Payload equal or bigger than 64 KiB is not supported");
@@ -121,7 +114,7 @@ const getParsedBuffer = (buffer) => {
     if (currentOffset + 4 > buffer.length) {
       return { payload: null, bufferRemainingBytes: buffer };
     }
-    maskingKey = buffer.readUInt32BE(currentOffset);
+    maskingKey = view.getUint32(currentOffset);
     currentOffset += 4;
   }
 
@@ -130,37 +123,34 @@ const getParsedBuffer = (buffer) => {
     return { payload: null, bufferRemainingBytes: buffer };
   }
 
-  payload = Buffer.alloc(payloadLength);
+  payload = new Uint8Array(payloadLength);
 
   if (isMasked) {
     for (let i = 0, j = 0; i < payloadLength; ++i, j = i % 4) {
       const shift = j === 3 ? 0 : (3 - j) << 3;
       const mask = (shift === 0 ? maskingKey : maskingKey >>> shift) & 0xff;
 
-      payload.writeUInt8(mask ^ buffer.readUInt8(currentOffset++), i);
+      payload[i] = mask ^ view.getUint8(currentOffset++);
     }
   } else {
     for (let i = 0; i < payloadLength; i++) {
-      payload.writeUInt8(buffer.readUInt8(currentOffset++), i);
+      payload[i] = view.getUint8(currentOffset++);
     }
   }
 
-  bufferRemainingBytes = Buffer.alloc(buffer.length - currentOffset);
+  bufferRemainingBytes = new Uint8Array(buffer.length - currentOffset);
   for (let i = 0; i < bufferRemainingBytes.length; i++) {
-    bufferRemainingBytes.writeUInt8(buffer.readUInt8(currentOffset++), i);
+    bufferRemainingBytes[i] = view.getUint8(currentOffset++);
   }
 
   return { payload, bufferRemainingBytes };
 };
 
 function parseWebSocketFrame(buffer) {
-  let bufferToParse = Buffer.alloc(0);
+  let bufferToParse = buffer;
   let parsedBuffer;
-
-  bufferToParse = Buffer.concat([bufferToParse, buffer]);
   do {
     parsedBuffer = getParsedBuffer(bufferToParse);
-
     debugBuffer("buffer", buffer);
     debugBuffer("bufferToParse", bufferToParse);
     debugBuffer("parsedBuffer.payload", parsedBuffer.payload);
