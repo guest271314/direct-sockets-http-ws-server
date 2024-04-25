@@ -204,10 +204,14 @@ const socket = new TCPServerSocket("0.0.0.0", {
               console.log(controller);
             },
             async write(r, controller) {
+              // Do stuff with encoded request
               const request = decoder.decode(r);
               console.log(request);
-              // HTTP and WebSocket request and response logic
-              // TODO: Create and send valid WebSocket close frame to client
+              // HTTP and WebSocket request and response logic              
+              // Create and send valid WebSocket close frame to client
+              await writer.write(new Uint8Array([0x88, 0x00])); // 136, 0
+              await writer.close();
+              return await writer.closed;
             },
             close: () => {
               console.log("Client closed");
