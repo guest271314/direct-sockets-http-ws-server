@@ -270,14 +270,10 @@ onload = async () => {
                 const response = parseWebSocketFrame(r);
                 console.log({ response });
                 if (response === null) {
-                  // TODO: Close WebSocket connection without abort or error
-                  // const Buffer.allocUnsafe(2);
-                  // target[0] = 0x80;
-                  // target.writeUInt16BE(0x88, 0);
-                  // await writer.write(new Uint8Array([130, 1, 0x88]).buffer);
+                  await writer.write(new Uint8Array([0x88, 0x00])); // 136, 0
                   await writer.close();
                   await writer.closed;
-                  return abortable.abort("WebSocket closed by client, aborted in server");
+                  // return abortable.abort("WebSocket closed by client, aborted in server");
                 }
                 await writer.write(response.buffer);
                 // Don't close WebSocket
