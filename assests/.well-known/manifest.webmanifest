@@ -1,0 +1,19 @@
+{
+    "id": "/",
+    "short_name": "TCPServerSocket",
+    "name": "TCPServerSocket",
+    "version": "0.1.0",
+    "icons": [{
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAACQCAYAAADnRuK4AAAAAXNSR0IArs4c6QAAAmxJREFUeF7t0rENAAAMwrDy/9M9IqvZWSLvTIFQYOHrqsABBEEqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzOADGQCgCU8jkDxEAqAFDK5wwQA6kAQCmfM0AMpAIApXzODzTLAJEg2OWPAAAAAElFTkSuQmCC",
+      "sizes": "144x144",
+      "type": "image/png"
+    }],
+    "start_url": "/",
+    "display": "minimal-ui",
+    "scope": "/",
+    "permissions_policy": {
+      "cross-origin-isolated": ["self"],
+      "direct-sockets": ["self"],
+      "picture-in-picture": ["self"]
+    }
+  }
