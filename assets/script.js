@@ -265,7 +265,7 @@ onload = async () => {
                   await writer.closed;
                   // return abortable.abort("WebSocket closed by client, aborted in server");
                 }
-                await writer.write(response.buffer);
+                await writer.write(response);
                 // Don't close WebSocket
                 // await writer.close();
               }
