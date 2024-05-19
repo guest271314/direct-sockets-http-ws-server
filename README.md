@@ -157,7 +157,7 @@ Navigate to `chrome://web-app-internals/`, on the line beginning with `Install I
 
 See `https.js` and `ws.js` in `examples` directory.
 
-We ould recently open the IWA `window` from arbitrary Web sites in DevTools `console` or Snippets with 
+We could recently open the IWA `window` from arbitrary Web sites in DevTools `console` or Snippets with 
 
 ```
 var iwa = open("isolated-app://<IWA_ID>");
