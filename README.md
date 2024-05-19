@@ -157,11 +157,13 @@ Navigate to `chrome://web-app-internals/`, on the line beginning with `Install I
 
 See `https.js` and `ws.js` in `examples` directory.
 
-We open the IWA `window` from arbitrary Web sites in DevTools `console` or Snippets with 
+We ould recently open the IWA `window` from arbitrary Web sites in DevTools `console` or Snippets with 
 
 ```
 var iwa = open("isolated-app://<IWA_ID>");
 ```
+
+[iwa: Mark isolated-app: as being handled by Chrome](https://chromium-review.googlesource.com/c/chromium/src/+/5466063) evidently had the side effect of blocking that capability, see [window.open("isolated-app://<ID>") is blocked](https://issues.chromium.org/issues/339994757#comment6). [isolated-web-app-utilities](https://github.com/guest271314/isolated-web-app-utilities) provides approaches to open the IWA window from arbitrary Web sites, `chrome:`, `chrome-extension:` URL's.
 
 ### HTTP and WebSocket server
 
