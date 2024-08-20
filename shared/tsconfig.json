@@ -1,8 +1,0 @@
-{
-  "compilerOptions": {
-    "outDir": "lib",
-    "noEmit": false
-  },
-  "include": ["**/*"],
-  "exclude": ["test/**"]
-}

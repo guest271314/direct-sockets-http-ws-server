@@ -1,6 +1,5 @@
 globalThis.Buffer ??= (await import("node:buffer")).Buffer; // For Deno
-import bundleIsolatedWebApp from "./wbn-bundle.js";
-import { WebBundleId } from "wbn-sign-webcrypto";
+import { bundleIsolatedWebApp, WebBundleId } from "./wbn-bundle.js";
 import { readFileSync, writeFileSync } from "node:fs";
 import { webcrypto } from "node:crypto";
 import * as path from "node:path";
@@ -28,6 +27,10 @@ const cryptoKey = {
   ),
 };
 
+const webBundleId = await new WebBundleId(
+    cryptoKey.publicKey,
+  ).serialize();
+
 const isolatedWebAppURL = await new WebBundleId(
     cryptoKey.publicKey,
   ).serializeWithIsolatedWebAppOrigin();
@@ -46,10 +49,11 @@ const { fileName, source } = await bundleIsolatedWebApp({
   formatVersion: "b2",
   output: "signed.swbn",
   integrityBlockSign: {
+    webBundleId,
     isIwa: true,
     // https://github.com/GoogleChromeLabs/webbundle-plugins/blob/d251f6efbdb41cf8d37b9b7c696fd5c795cdc231/packages/rollup-plugin-webbundle/test/test.js#L408
     // wbn-sign/lib/signers/node-crypto-signing-strategy.js
-    strategy: new (class CustomSigningStrategy {
+    strategies: [new (class CustomSigningStrategy {
       async sign(data) {
         return new Uint8Array(
           await webcrypto.subtle.sign(algorithm, cryptoKey.privateKey, data),
@@ -58,7 +62,7 @@ const { fileName, source } = await bundleIsolatedWebApp({
       async getPublicKey() {
         return cryptoKey.publicKey;
       }
-    })(),
+    })()],
   },
   headerOverride: {
     "cross-origin-embedder-policy": "require-corp",
