@@ -81,11 +81,6 @@ or
 npm install
 ```
 
-or 
-
-```
-deno run -A deno_install.js
-```
 
 ### Signed Web Bundle/Isolated Web App source files
 
