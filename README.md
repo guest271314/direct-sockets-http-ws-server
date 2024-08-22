@@ -69,13 +69,6 @@ For the WebSocket implementation [WebSocket - binary broadcast example (pure Nod
 
 ### Fetch dependencies
 
-Creates a `node_modules` folder containing dependencies and builds SWBN for IWA
-
-```
-deno run -A index.js
-```
-
-Creates a `node_modules` folder containing dependencies
 ```
 bun install
 ```
@@ -116,13 +109,19 @@ bun run index.js
 
 Deno
 ```
-deno run --unstable-byonm -A index.js
+deno run -A index.js
 ```
 
-#### Dynamically fetch dependencies without creating a `node_modules` folder and create the `.swbn` file and IWA.
+#### Dynamically fetch dependencies without creating a `node_modules` folder and create the `.swbn` file and IWA
 
 ```
 deno run -A --import-map=import-map.json index.js
+```
+
+#### Dynamically fetch dependencies and create `node_module` colder and create the `.swbn` filr and IWA
+
+```
+deno run -A index.js
 ```
 
 ### Build/rebuild `wbn-bundle.js` from `src/index.ts` with `bun`
