@@ -69,8 +69,13 @@ For the WebSocket implementation [WebSocket - binary broadcast example (pure Nod
 
 ### Fetch dependencies
 
-Creates a `node_modules` folder containing dependencies
+Creates a `node_modules` folder containing dependencies and builds SWBN for IWA
 
+```
+deno run -A index.js
+```
+
+Creates a `node_modules` folder containing dependencies
 ```
 bun install
 ```
