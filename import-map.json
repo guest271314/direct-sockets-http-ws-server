@@ -1,6 +1,7 @@
 {
   "imports": {
-    "base32-encode": "npm:base32-encode@2.0.0",
-    "mime": "npm:mime@2.6.0"
+    "base32-encode": "https://esm.sh/base32-encode@2.0.0",
+    "mime": "https://esm.sh/mime@2.6.0"
   }
 }
+
