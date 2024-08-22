@@ -1,3 +1,5 @@
+// https://github.com/GoogleChromeLabs/webbundle-plugins/blob/main/packages/rollup-plugin-webbundle/src/index.ts
+// https://github.com/GoogleChromeLabs/webbundle-plugins/tree/main/packages/shared
 // bun build --target=node --format=esm --sourcemap=none --outfile=bun-bundle.js ./webbundle-plugins/packages/rollup-plugin-webbundle/src/index.ts
 import {createRequire} from "node:module";
 var __create = Object.create;
