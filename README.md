@@ -118,7 +118,7 @@ deno run -A index.js
 deno run -A --import-map=import-map.json index.js
 ```
 
-### Build/rebuild `wbn-bundle.js` from `src/index.ts` with `bun`
+### Build/rebuild `wbn-bundle.js` from `webbundle-plugins/packages/rollup-plugin-webbundle/src/index.ts` with `bun`
 
 
 1. `git clone https://github.com/GoogleChromeLabs/webbundle-plugins`
