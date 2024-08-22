@@ -112,16 +112,10 @@ Deno
 deno run -A index.js
 ```
 
-#### Dynamically fetch dependencies without creating a `node_modules` folder and create the `.swbn` file and IWA
+#### Dynamically fetch dependencies and create `node_module` folder and create the `.swbn` file and IWA
 
 ```
 deno run -A --import-map=import-map.json index.js
-```
-
-#### Dynamically fetch dependencies and create `node_module` colder and create the `.swbn` filr and IWA
-
-```
-deno run -A index.js
 ```
 
 ### Build/rebuild `wbn-bundle.js` from `src/index.ts` with `bun`
