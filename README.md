@@ -122,7 +122,7 @@ deno run --unstable-byonm -A index.js
 #### Dynamically fetch dependencies without creating a `node_modules` folder and create the `.swbn` file and IWA.
 
 ```
-deno run -A --unstable-byonm --import-map=import-map.json index.js
+deno run -A --import-map=import-map.json index.js
 ```
 
 ### Build/rebuild `wbn-bundle.js` from `src/index.ts` with `bun`
