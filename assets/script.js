@@ -236,6 +236,11 @@ onload = async () => {
           remotePort,
         } = await connection.opened;
         console.log({ connection });
+        document.body.textContent = JSON.stringify(
+          { localAddress, localPort, remoteAddress, remotePort },
+            null,
+            2,
+          );
         const writer = writable.getWriter();
         console.log({
           remoteAddress,
