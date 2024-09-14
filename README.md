@@ -57,6 +57,7 @@ For the WebSocket implementation [WebSocket - binary broadcast example (pure Nod
 
 - Substitute Web Cryptography API ([wbn-sign-webcrypto](https://github.com/guest271314/wbn-sign-webcrypto)) for `node:crypto` implementation of Ed25519 algorithm 
 - Install and run same JavaScript source code in different JavaScript runtimes, e.g., `node`, `deno`, `bun`
+- Integrity Block V2 supported
 
 ### TODO
 
