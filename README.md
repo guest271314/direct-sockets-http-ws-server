@@ -160,7 +160,7 @@ var iwa = open("isolated-app://<IWA_ID>");
 
 ```
 const socket = new TCPServerSocket("0.0.0.0", {
-    localPort: 8080,
+    localPort: 44818,
   });
 
   const {
@@ -231,7 +231,7 @@ const socket = new TCPServerSocket("0.0.0.0", {
 Using WHATWG Fetch
 
 ```
-fetch("http://0.0.0.0:8080", {
+fetch("http://0.0.0.0:44818", {
   method: "post",
   body: "test",
   headers: {
@@ -248,7 +248,7 @@ fetch("http://0.0.0.0:8080", {
 ### WebSocket client
 
 ```
-var wss = new WebSocketStream("ws://0.0.0.0:8080");
+var wss = new WebSocketStream("ws://0.0.0.0:44818");
 console.log(wss);
 wss.closed.catch((e) => {});
 wss.opened.catch((e) => {});
