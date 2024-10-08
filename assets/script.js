@@ -214,7 +214,7 @@ onload = async () => {
   const encode = (text) => encoder.encode(text);
 
   const socket = new TCPServerSocket("0.0.0.0", {
-    localPort: 8080,
+    localPort: 44818, // EtherNet/IP
   });
 
   const {
