@@ -53,6 +53,16 @@ not include a built-in Web server in the compiled `qjs` executable, see [webserv
 
 For the WebSocket implementation [WebSocket - binary broadcast example (pure NodeJs implementation without any dependency)](https://gist.github.com/robertrypula/b813ffe23a9489bae1b677f1608676c8) is used.
 
+### Chromium command-line switches
+
+Launch Chromium or Chrome with 
+
+```
+--unsafely-treat-insecure-origin-as-secure=http://0.0.0.0:44818,ws://0.0.0.0:44818
+```
+
+to avoid Chromium rendering insecure connection notification in the address bar.
+
 ### Isolated Web App and Signed Web Bundle
 
 - Substitute Web Cryptography API ([wbn-sign-webcrypto](https://github.com/guest271314/wbn-sign-webcrypto)) for `node:crypto` implementation of Ed25519 algorithm 
