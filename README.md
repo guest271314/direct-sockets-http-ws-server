@@ -125,7 +125,7 @@ bun run index.js
 
 Deno
 ```
-deno -A --unstable-byonm index.js
+deno -A --import-map import-map.json index.js
 ```
 
 #### Dynamically fetch dependencies and create `node_module` folder and create the `.swbn` file and IWA
