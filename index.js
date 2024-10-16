@@ -1,9 +1,11 @@
-globalThis.Buffer ??= (await import("node:buffer")).Buffer; // For Deno
+// import statement at top-level for 
+// Nodes.js' ES module Syntax detection https://nodejs.org/api/packages.html#syntax-detection 
+// when not using --experimental-default-type=module
 import { bundleIsolatedWebApp, WebBundleId } from "./wbn-bundle.js";
 import { readFileSync, writeFileSync } from "node:fs";
 import { webcrypto } from "node:crypto";
 import * as path from "node:path";
-
+globalThis.Buffer ??= (await import("node:buffer")).Buffer; // For Deno
 const algorithm = { name: "Ed25519" };
 const decoder = new TextDecoder();
 const script = readFileSync("./assets/script.js");
