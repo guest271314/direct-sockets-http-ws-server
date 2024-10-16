@@ -75,6 +75,7 @@ to avoid Chromium rendering insecure connection notification in the address bar.
 - Substitute `ArrayBuffer`, `DataView`, `TypedArray` for Node.js Buffer polyfill
 - TLS and HTTP/2 support
 - Create Signed Web Bundle and Isolated Web App in the browser
+- Improve HTTP and WebSocket header parsing
 
 ## Building
 
@@ -115,7 +116,7 @@ Write `signed.swbn` to current directory
 
 Node.js 
 ```
-node --experimental-default-type=module index.js
+node index.js
 ```
 
 Bun
@@ -123,15 +124,9 @@ Bun
 bun run index.js
 ```
 
-Deno
+Deno (Can be run without `node_modules` folder in current directory; fetches dependencies from https://esm.sh)
 ```
 deno -A --import-map import-map.json index.js
-```
-
-#### Dynamically fetch dependencies and create `node_module` folder and create the `.swbn` file and IWA
-
-```
-deno -A --import-map=import-map.json --unstable-byonm index.js
 ```
 
 ### Build/rebuild `wbn-bundle.js` from `webbundle-plugins/packages/rollup-plugin-webbundle/src/index.ts` with `bun`
