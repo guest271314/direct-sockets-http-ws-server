@@ -267,7 +267,7 @@ onload = async () => {
                 if (response === null) {
                   await writer.write(new Uint8Array([0x88, 0x00])); // 136, 0
                   await writer.close();
-                  await writer.closed;
+                  return await writer.closed;
                   // return abortable.abort("WebSocket closed by client, aborted in server");
                 }
                 await writer.write(response);
