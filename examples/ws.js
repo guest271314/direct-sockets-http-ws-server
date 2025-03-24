@@ -16,10 +16,7 @@ await scheduler.postTask(()=>{}
 });
 var wss = new WebSocketStream("ws://0.0.0.0:44818");
 console.log(wss);
-wss.closed.catch((e)=>{}
-);
-wss.opened.catch((e)=>{}
-);
+wss.closed.catch((e)=>{console.log(e)});
 var {readable, writable, } = await wss.opened.catch(console.error);
 var writer = writable.getWriter();
 var abortable = new AbortController();
@@ -35,17 +32,12 @@ var pipe = readable.pipeTo(new WritableStream({
   close() {
     console.log("Socket closed");
   },
-  abort(reason) {// console.log({ reason });
+  abort(reason) {
+    console.log({ reason });
   },
 }), {
   signal,
-}, ).then(()=>({
-  done: true,
-  e: null
-})).catch((e)=>({
-  done: true,
-  e
-}));
+}, ).then(()=>console.log("Done")).catch((e)=>console.log(e));
 
 var encoder = new TextEncoder();
 var decoder = new TextDecoder();
