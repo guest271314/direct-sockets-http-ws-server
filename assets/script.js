@@ -1,4 +1,6 @@
 // TODO: TLS, HTTP/2
+// Copyright (c) 2019-2021 Robert Rypuła - https://github.com/robertrypula
+// Fork of https://gist.github.com/robertrypula/b813ffe23a9489bae1b677f1608676c8
 const debugBuffer = (bufferName, buffer) => {
   const length = buffer ? buffer.length : "---";
   console.log(`:: DEBUG - ${bufferName} | ${length} | `, buffer, "\n");
