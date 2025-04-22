@@ -72,8 +72,8 @@ to avoid Chromium rendering insecure connection notification in the address bar.
 ### TODO
 
 - Create valid close frame (server to client) for WebSocket server; currently we abort the request in the server with `AbortController` when the WebSocket client closes the connection. Completed.
-- Substitute `ArrayBuffer`, `DataView`, `TypedArray` for Node.js Buffer polyfill
-- TLS and HTTP/2 support
+- Substitute `ArrayBuffer`, `DataView`, `TypedArray` for Node.js `Buffer` polyfill. Completed.
+- TLS, HTTP/2, HTTP/3, WebTrasnport support
 - Create Signed Web Bundle and Isolated Web App in the browser
 - Improve HTTP and WebSocket header parsing
 
