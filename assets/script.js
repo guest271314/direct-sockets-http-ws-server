@@ -123,7 +123,7 @@ function getHeaders(r) {
 // IWA window
 onload = async () => {
   resizeTo(300, 200);
-  const USER_AGENT = "Built with Deno/2.3.0-rc.0+5bee292";
+  const USER_AGENT = "";
   console.log(USER_AGENT);
 
   const encoder = new TextEncoder();
