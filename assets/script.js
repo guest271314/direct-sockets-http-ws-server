@@ -224,6 +224,7 @@ onload = async () => {
                 }
                 // Write 16384 bytes
                 for (let i = 0; i < parsed.data.length; i += 16384) {
+                  await writer.ready;
                   await writer.write(
                     createWebSocketFrame(parsed.data.subarray(i, i + 16384)),
                   );
