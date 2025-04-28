@@ -179,12 +179,16 @@ class WebSocketConnection {
     const encoder = new TextEncoder, key = btoa([
       ...new Uint8Array(await crypto.subtle.digest("SHA-1", encoder.encode(`${secKeyWebSocket}${WebSocketConnection.KEY_SUFFIX}`)))
     ].map((s) => String.fromCodePoint(s)).join(""));
-    return (new Response(`HTTP/1.1 101 Web Socket Protocol Handshake\r
+    const header = `HTTP/1.1 101 Web Socket Protocol Handshake\r
 Upgrade: WebSocket\r
 Connection: Upgrade\r
 sec-websocket-accept: ` + key + `\r
 \r
-`)).body.pipeTo(writable, { preventClose: !0 });
+`;
+    return writable instanceof WritableStream 
+     ? (new Response(header
+      )).body.pipeTo(writable, { preventClose: !0 })
+     : writable.write(encoder.encode(header));
   }
 }
 
