@@ -291,10 +291,7 @@ for (let i = 0; i < data.length; i += 65536) {
   } else {
     const decoded = decoder.decode(v, {
       stream: true
-    });          if (!/(GET|POST|HEAD|OPTIONS|QUERY)/i.test(request)) {
-            await this.wsWriter.ready;
-            await this.wsWriter.write(r);
-          }
+    });         
     console.log(len += v.byteLength, v, [...decoded].every( (s) => s === "a"));
   }
 }
