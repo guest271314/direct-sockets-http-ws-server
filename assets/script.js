@@ -1,20 +1,4 @@
 import { WebSocketConnection } from "./websocket-server.js";
-// Handle WebSocket handshake
-// https://stackoverflow.com/a/77398427
-async function digest(message, algo = "SHA-1") {
-  return btoa(
-    [
-      ...new Uint8Array(
-        await crypto.subtle.digest(
-          algo,
-          new TextEncoder().encode(
-            `${message}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`,
-          ),
-        ),
-      ),
-    ].map((s) => String.fromCodePoint(s)).join(""),
-  );
-}
 // Get Request-Line and Headers
 // TODO: Get request line URI, protocol
 function getHeaders(r) {
@@ -114,14 +98,9 @@ onload = async () => {
                   request,
                 );
                 const key = headers.get("sec-websocket-key");
-                const accept = await digest(key);
-                await writer.write(
-                  encode("HTTP/1.1 101 Switching Protocols\r\n"),
-                );
-                await writer.write(encode("Upgrade: websocket\r\n"));
-                await writer.write(encode("Connection: Upgrade\r\n"));
-                await writer.write(
-                  encode(`Sec-WebSocket-Accept: ${accept}\r\n\r\n`),
+                await WebSocketConnection.hashWebSocketKey(
+                  key,
+                  writer,
                 );
                 this.ws = new WebSocketConnection(this.wsReadable, writer)
                   .processWebSocketStream().catch((e) => {
