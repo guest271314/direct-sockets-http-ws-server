@@ -166,16 +166,13 @@ var iwa = open("isolated-app://<IWA_ID>");
 ```
 const socket = new TCPServerSocket("0.0.0.0", {
     localPort: 44818,
+    // EtherNet/IP
   });
 
-  const {
-    readable: server,
-    localAddress,
-    localPort,
-  } = await socket.opened;
+const { readable: server, localAddress, localPort } = await socket.opened;
 
   console.log({ server });
-  // TODO: Handle multiple connections
+
   await server.pipeTo(
     new WritableStream({
       async write(connection) {
@@ -198,18 +195,30 @@ const socket = new TCPServerSocket("0.0.0.0", {
         // .pipeThrough(new TextDecoderStream())
         await client.pipeTo(
           new WritableStream({
-            start(controller) {             
-              console.log(controller);
+            start: (controller) => {
+              this.ws = void 0;
+              const {
+                readable: wsReadable,
+                writable: wsWritable
+              } = new TransformStream, wsWriter = wsWritable.getWriter();
+              Object.assign(this, { wsReadable, wsWritable, wsWriter });
             },
             async write(r, controller) {
               // Do stuff with encoded request
               const request = decoder.decode(r);
               console.log(request);
               // HTTP and WebSocket request and response logic              
-              // Create and send valid WebSocket close frame to client
-              await writer.write(new Uint8Array([0x88, 0x00])); // 136, 0
-              await writer.close();
-              return await writer.closed;
+              if (/^OPTIONS/.test(request)) {
+                await writer.write(encode(`HTTP/1.1 204 OK\r`));
+                // ...
+              }
+              if (/^GET/.test(request) && /websocket/i.test(request)) {
+                // ...
+              }
+              if (!/(GET|POST|HEAD|OPTIONS|QUERY)/i.test(request)) {
+                await this.wsWriter.ready;
+                await this.wsWriter.write(r);
+              }
             },
             close: () => {
               console.log("Client closed");
@@ -253,46 +262,47 @@ fetch("http://0.0.0.0:44818", {
 ### WebSocket client
 
 ```
-var wss = new WebSocketStream("ws://0.0.0.0:44818");
-console.log(wss);
-wss.closed.catch((e) => {});
-wss.opened.catch((e) => {});
-var {
-  readable,
-  writable,
-} = await wss.opened.catch(console.error);
-var writer = writable.getWriter();
+// Only aborts *before* the handshake
 var abortable = new AbortController();
-var {
-  signal,
-} = abortable;
-// .pipeThrough(new TextDecoderStream())
-var pipe = readable.pipeTo(
-  new WritableStream({
-    start(c) {
-      console.log("Start", c);
-    },
-    async write(v) {
-      console.log(v, decoder.decode(v));
-    },
-    close() {
-      console.log("Socket closed");
-    },
-    abort(reason) {
-      // console.log({ reason });
-    },
-  }),
-  {
-    signal,
-  },
-).then(() => ({ done: true, e: null })).catch((e) => ({ done: true, e }));
-
+var {signal, } = abortable;
+var wss = new WebSocketStream("ws://0.0.0.0:44818",{
+  signal
+});
+console.log(wss);
+wss.closed.then( () => console.log("WebSocketStream closed.")).catch( (e) => {
+  console.log(e)
+}
+);
+var {readable, writable, } = await wss.opened.catch(console.error);
+var writer = writable.getWriter();
+var reader = readable.getReader();
+var len = 0;
 var encoder = new TextEncoder();
 var decoder = new TextDecoder();
-var encode = (text) => encoder.encode(text);
-await writer.write(encode("X"));
-// Later on close the WebSocketStream connection
-await writer.close().catch(() => pipe).then(console.log);
+var data = new Uint8Array(1024 ** 2 * 7).fill(97);
+var len = 0;
+for (let i = 0; i < data.length; i += 65536) {
+  await writer.ready;
+  writer.write(data.subarray(i, i + 65536));
+  // console.log(writer.desiredSize);
+  const {value: v, done} = await reader.read();
+  if (typeof v === "string") {
+    console.log(v);
+  } else {
+    const decoded = decoder.decode(v, {
+      stream: true
+    });          if (!/(GET|POST|HEAD|OPTIONS|QUERY)/i.test(request)) {
+            await this.wsWriter.ready;
+            await this.wsWriter.write(r);
+          }
+    console.log(len += v.byteLength, v, [...decoded].every( (s) => s === "a"));
+  }
+}
+console.assert(len === data.buffer.byteLength, [len, data.buffer.byteLength]);
+console.log(len, data.buffer.byteLength);
+await writer.write("Text").then( () => reader.read()).then(console.log);
+await writer.close();
+
 ```
 
 ## License
