@@ -1,87 +1,4 @@
-// https://github.com/lsert/websocketparser
-function wsparser(d) {
-  const tArr = d;
-  const group0 = tArr[0];
-  const FIN = group0 >> 7;
-  const RSV1 = (group0 & 64) >> 6;
-  const RSV2 = (group0 & 32) >> 5;
-  const RSV3 = (group0 & 16) >> 4;
-  const opcode = group0 & 15;
-
-  const group1 = tArr[1];
-  const group2 = tArr[2];
-  const group3 = tArr[3];
-
-  // 计算数据开始点
-  let counter = 2;
-
-  const mask = group1 >> 7;
-  const payloadLens = group1 & 127;
-  let realLens = payloadLens;
-  if (payloadLens === 126) {
-    realLens = (group2 << 8) | group3;
-    counter += 2;
-  } else if (payloadLens === 127) {
-    const ab = new ArrayBuffer(8);
-    const dv = new DataView(ab);
-    for (let i = 0; i < 8; i++) {
-      dv.setUint8(i, tArr[i + 2]);
-    }
-    realLens = dv.getBigUint64(0, false);
-    counter += 8;
-  }
-
-  let data;
-  if (mask === 1) {
-    const maskKeyArr = tArr.slice(counter, counter + 4);
-    counter += 4;
-
-    // 解掩码
-    data = tArr.slice(counter).map((item, index) => {
-      const j = index % 4;
-      return item ^ maskKeyArr[j];
-    });
-  } else {
-    data = tArr.slice(counter);
-  }
-  let arr = {
-    FIN,
-    mask,
-    RSV1,
-    RSV2,
-    RSV3,
-    opcode,
-    realLens,
-    data: new Uint8Array(data),
-  };
-  return arr;
-}
-
-// https://gist.github.com/robertrypula/b813ffe23a9489bae1b677f1608676c8
-const createWebSocketFrame = (payload) => {
-  const payloadLengthByteCount = payload.length < 126 ? 0 : 2;
-  const buffer = new ArrayBuffer(2 + payloadLengthByteCount + payload.length);
-  const view = new DataView(buffer);
-  let payloadOffset = 2;
-  console.log(payload.length, payloadLengthByteCount);
-  // TODO: Handle greater than 65536 input ArrayBuffer byteLength (guest271314)
-  if (payload.length >= Math.pow(2, 16)) {
-    throw new Error("Payload equal or bigger than 64 KiB is not supported");
-  }
-
-  view.setUint8(0, 0b10000010);
-  view.setUint8(1, payload.length < 126 ? payload.length : 126);
-  if (payloadLengthByteCount > 0) {
-    view.setUint16(2, payload.length, false);
-    payloadOffset += payloadLengthByteCount;
-  }
-
-  for (let i = 0, j = payloadOffset; i < payload.length; i++, j++) {
-    view.setUint8(j, payload[i]);
-  }
-  return buffer;
-};
-
+import { WebSocketConnection } from "./websocket-server.js";
 // Handle WebSocket handshake
 // https://stackoverflow.com/a/77398427
 async function digest(message, algo = "SHA-1") {
@@ -154,8 +71,7 @@ onload = async () => {
     null,
     2,
   );
-  // TODO:
-  // Handle multiple connections
+
   await server.pipeTo(
     new WritableStream({
       async write(connection) {
@@ -179,58 +95,18 @@ onload = async () => {
         client.pipeTo(
           new WritableStream({
             start: (controller) => {
-              console.log(controller);
-              this.fragments = [];
+              this.ws = void 0;
+              const { readable: wsReadable, writable: wsWritable } = new TransformStream, 
+                wsWriter = wsWritable.getWriter();
+              Object.assign(this, { wsReadable, wsWritable, wsWriter });
             },
             write: async (r, controller) => {
               const request = decoder.decode(r);
               // console.log(request);
               // Handle WebSocket
               if (!/(GET|POST|HEAD|OPTIONS|QUERY)/i.test(request)) {
-                let parsed = wsparser(r);
-                console.log(
-                  {
-                    r,
-                  },
-                  parsed.data.length,
-                  parsed.realLens,
-                );
-                // Handle fragmented frames up to 65536 byteLength
-                // from input ArrayBuffer
-                if (parsed.data.length < parsed.realLens) {
-                  this.fragments.push(parsed.data);
-                  console.log(this.fragments);
-                  return;
-                }
-                if (this.fragments.length) {
-                  const data = [];
-                  do {
-                    for (let i = 0; i < this.fragments.length; i++) {
-                      data.push(...this.fragments.shift());
-                    }
-                  } while (this.fragments.length);
-                  parsed.data = new Uint8Array([...data, ...r]);
-                  console.log({
-                    parsed,
-                  });
-                }
-                // Handle client closing WebSocket
-                if (parsed.opcode === 0x8 && parsed.data.length === 0) {
-                  console.log(parsed.opcode, parsed.data);
-                  await writer.write(new Uint8Array([0x88, 0x00]));
-                  // 136, 0
-                  await writer.close();
-                  return await writer.closed;
-                }
-                // Write 16384 bytes
-                for (let i = 0; i < parsed.data.length; i += 16384) {
-                  await writer.ready;
-                  await writer.write(
-                    createWebSocketFrame(parsed.data.subarray(i, i + 16384)),
-                  );
-                }
-                // Don't close WebSocket
-                // await writer.close();
+                await this.wsWriter.ready;
+                await this.wsWriter.write(r);
               }
               // Handle WebSocket request
               if (/^GET/.test(request) && /websocket/i.test(request)) {
@@ -247,8 +123,11 @@ onload = async () => {
                 await writer.write(
                   encode(`Sec-WebSocket-Accept: ${accept}\r\n\r\n`),
                 );
-                // Don't close WebSocket
-                // await writer.close();
+                this.ws = new WebSocketConnection(this.wsReadable, writer)
+                  .processWebSocketStream().catch((e) => {
+                  throw e;
+                });
+                console.log(this.ws);
               }
               if (/^OPTIONS/.test(request)) {
                 await writer.write(encode("HTTP/1.1 204 OK\r\n"));
