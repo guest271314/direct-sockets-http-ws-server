@@ -36,7 +36,6 @@ class WebSocketConnection {
         uint8.set(frame, this.buffer.length);
         this.buffer = uint8;
         this.processFrame();
-        this.loopsToProcessFrame = 0;
       }
       console.log("WebSocket connection closed.");
     } catch (e) {
