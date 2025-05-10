@@ -44,7 +44,8 @@ class WebSocketConnection {
     }
   }
   writeFrame(opcode, payload) {
-    this.writer.write(this.encodeMessage(opcode, payload));
+    this.writer.write(this.encodeMessage(opcode, payload))
+      .catch(console.log);
   }
   send(obj) {
     console.log({ obj });
@@ -71,7 +72,7 @@ class WebSocketConnection {
       buffer = new Uint8Array(0);
     console.log({ opcode, reason, buffer });
     this.writeFrame(opcode, buffer);
-    this.writer.close();
+    this.writer.close().catch(console.log);
     this.closed = !0;
   }
   processFrame() {
