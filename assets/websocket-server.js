@@ -122,11 +122,11 @@ class WebSocketConnection {
       console.log(`this.buffer.length: ${this.buffer.byteLength}.`);
       return !1;
     }
-    const data = buf.subarray(idx + length);
-    this.buffer.resize(data.length);
+    const data = buf.subarray(idx + length);    
     for (let i = 0; i < this.buffer.byteLength; i++) {
       view.setUint8(i, data.at(i));
     }
+    this.buffer.resize(data.length);
     return !0;
   }
   async handleFrame(opcode, buffer) {
