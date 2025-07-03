@@ -10,7 +10,7 @@ if (globalThis?.openIsolatedWebApp) {
   setTitle(`?name=TCPServerSocket`);
 }
 await scheduler.postTask(() => {}, {
-  delay: 2500,
+  delay: 3000,
   priority: "user-visible",
 });
 // Only aborts *before* the handshake
