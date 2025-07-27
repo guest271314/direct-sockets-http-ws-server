@@ -12,6 +12,11 @@ class WebSocketConnection {
   readable;
   writable;
   writer;
+  incomingStream = new ReadableStream({
+    start: (_) => {
+      return this.incomingStreamController = _;
+    },
+  });
   buffer = new ArrayBuffer(0, { maxByteLength: 1024 ** 2 });
   closed = !1;
   opcodes = { TEXT: 1, BINARY: 2, PING: 9, PONG: 10, CLOSE: 8 };
@@ -28,10 +33,8 @@ class WebSocketConnection {
   async processWebSocketStream() {
     try {
       for await (const frame of this.readable) {
-        console.log(this.closed);
         if (!this.closed) {
           const { byteLength } = this.buffer;
-          console.log(byteLength, frame.length);
           this.buffer.resize(byteLength + frame.length);
           const view = new DataView(this.buffer);
           for (let i = 0, j = byteLength; i < frame.length; i++, j++) {
@@ -50,8 +53,9 @@ class WebSocketConnection {
   }
   async processFrame() {
     let length, maskBytes;
-    const buf = new Uint8Array(this.buffer), view = new DataView(buf.buffer);
-    if (buf.length < 2) {
+    const buffer = new Uint8Array(this.buffer),
+      view = new DataView(buffer.buffer);
+    if (buffer.length < 2) {
       return !1;
     }
     let idx = 2,
@@ -62,7 +66,7 @@ class WebSocketConnection {
       mask = b2 & 128;
     length = b2 & 127;
     if (length > 125) {
-      if (buf.length < 8) {
+      if (buffer.length < 8) {
         return !1;
       }
       if (length == 126) {
@@ -76,14 +80,14 @@ class WebSocketConnection {
         idx += 8;
       }
     }
-    if (buf.length < idx + 4 + length) {
+    if (buffer.length < idx + 4 + length) {
       return !1;
     }
-    maskBytes = buf.subarray(idx, idx + 4);
+    maskBytes = buffer.subarray(idx, idx + 4);
     idx += 4;
-    let payload = buf.subarray(idx, idx + length);
+    let payload = buffer.subarray(idx, idx + length);
     payload = this.unmask(maskBytes, payload);
-    await this.handleFrame(opcode, payload);
+    this.incomingStreamController.enqueue({ opcode, payload });
     if (this.buffer.byteLength === 0 && this.closed) {
       try {
         return !0;
@@ -95,7 +99,6 @@ class WebSocketConnection {
       console.log(`this.buffer.length: ${this.buffer.byteLength}.`);
       return !1;
     }
-    console.log(this.buffer.byteLength, idx, length);
 
     for (let i = 0, j = idx + length; j < this.buffer.byteLength; i++, j++) {
       view.setUint8(i, view.getUint8(j));
@@ -103,51 +106,49 @@ class WebSocketConnection {
     this.buffer.resize(this.buffer.byteLength - (idx + length));
     return !0;
   }
-  async handleFrame(opcode, buffer) {
-    console.log({ opcode, length: buffer.length });
-    const view = new DataView(buffer.buffer);
-    let payload;
-    switch (opcode) {
-      case this.opcodes.TEXT:
-        payload = buffer;
-        await this.writeFrame(opcode, payload);
-        break;
-      case this.opcodes.BINARY:
-        payload = buffer;
-        await this.writeFrame(opcode, payload);
-        break;
-      case this.opcodes.PING:
-        await this.writeFrame(this.opcodes.PONG, buffer);
-        break;
+  async writeFrame(opcode, buffer) {
+    await this.writer.ready;
+    if (opcode === this.opcodes.TEXT) {
+      return await this.writer.write(this.encodeMessage(opcode, buffer))
+        .catch(console.log);
+    }
+    if (opcode === this.opcodes.BINARY) {
+      return await this.writer.write(this.encodeMessage(opcode, buffer))
+        .catch(console.log);
+    }
+    if (opcode === this.opcodes.PING) {
+      return await this.writer.write(
+        this.encodeMessage(this.opcodes.PONG, buffer),
+      )
+        .catch(console.log);
+    }
+    /*
       case this.opcodes.PONG:
         break;
-      case this.opcodes.CLOSE:
-        let code, reason;
-        if (buffer.length >= 2) {
-          code = view.getUint16(0, !1);
-          reason = buffer.subarray(2);
-        }
-        await this.close(code, reason);
-        console.log("Close opcode.", new TextDecoder().decode(reason));
-        break;
-      default:
-        await this.close(1002, "unknown opcode");
+    */
+    if (opcode === this.opcodes.CLOSE) {
+      const view = new DataView(buffer.buffer);
+      let code, reason;
+      if (buffer.length >= 2) {
+        code = view.getUint16(0, !1);
+        reason = buffer.subarray(2);
+      }
+      return await this.close(code, reason)
+        .then(() =>
+          console.log("Close opcode.", code, new TextDecoder().decode(reason))
+        );
+    } else {
+      return await this.close(1002, "unknown opcode");
     }
   }
-  async writeFrame(opcode, payload) {
-    await this.writer.ready;
-    return this.writer.write(this.encodeMessage(opcode, payload))
-      .catch(console.log);
-  }
   async send(obj) {
-    console.log({ obj });
     let opcode, payload;
     if (obj instanceof Uint8Array) {
       opcode = this.opcodes.BINARY;
       payload = obj;
     } else if (typeof obj == "string") {
       opcode = this.opcodes.TEXT;
-      payload = obj;
+      payload = new TextEncoder().encode(obj);
     } else {
       throw new Error("Cannot send object. Must be string or Uint8Array");
     }
@@ -165,7 +166,9 @@ class WebSocketConnection {
       buffer = new Uint8Array(0);
     }
     console.log({ opcode, reason, buffer }, new TextDecoder().decode(reason));
-    await this.writeFrame(opcode, buffer);
+    this.incomingStreamController.close();
+    await this.writer.write(this.encodeMessage(opcode, buffer))
+      .catch(console.log);
     await this.writer.close();
     await this.writer.closed;
     this.buffer.resize(0);
@@ -179,33 +182,33 @@ class WebSocketConnection {
     return payload;
   }
   encodeMessage(opcode, payload) {
-    let buf, b1 = 128 | opcode, b2 = 0, length = payload.length;
+    let buffer, b1 = 128 | opcode, b2 = 0, length = payload.length;
     if (length < 126) {
-      buf = new Uint8Array(payload.length + 2 + 0);
-      const view = new DataView(buf.buffer);
+      buffer = new Uint8Array(payload.length + 2 + 0);
+      const view = new DataView(buffer.buffer);
       b2 |= length;
       view.setUint8(0, b1);
       view.setUint8(1, b2);
-      buf.set(payload, 2);
+      buffer.set(payload, 2);
     } else if (length < 65536) {
-      buf = new Uint8Array(payload.length + 2 + 2);
-      const view = new DataView(buf.buffer);
+      buffer = new Uint8Array(payload.length + 2 + 2);
+      const view = new DataView(buffer.buffer);
       b2 |= 126;
       view.setUint8(0, b1);
       view.setUint8(1, b2);
       view.setUint16(2, length);
-      buf.set(payload, 4);
+      buffer.set(payload, 4);
     } else {
-      buf = new Uint8Array(payload.length + 2 + 8);
-      const view = new DataView(buf.buffer);
+      buffer = new Uint8Array(payload.length + 2 + 8);
+      const view = new DataView(buffer.buffer);
       b2 |= 127;
       view.setUint8(0, b1);
       view.setUint8(1, b2);
       view.setUint32(2, 0, !1);
       view.setUint32(6, length, !1);
-      buf.set(payload, 10);
+      buffer.set(payload, 10);
     }
-    return buf;
+    return buffer;
   }
   static KEY_SUFFIX = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   static async hashWebSocketKey(secKeyWebSocket, writable) {
