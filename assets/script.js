@@ -102,11 +102,24 @@ onload = async () => {
                   key,
                   writer,
                 );
-                this.ws = new WebSocketConnection(this.wsReadable, writer)
-                  .processWebSocketStream().catch((e) => {
+                this.ws = new WebSocketConnection(this.wsReadable, writer);
+                this.ws.processWebSocketStream().catch((e) => {
                   throw e;
                 });
                 console.log(this.ws);
+                this.ws.incomingStream.pipeTo(
+                  new WritableStream({
+                    write: async ({ opcode, payload }) => {
+                     console.log({opcode, payload});
+                      await this.ws.writeFrame(opcode, payload);
+                      if (opcode === this.ws.opcodes.CLOSE) {
+                        this.ws.incomingStreamController.close();
+                      }
+                    },
+                  }),
+                ).catch(() => {
+                  console.log(`Incoming WebSocketStream closed`, this.ws);
+                });
               }
               if (/^OPTIONS/.test(request)) {
                 await writer.write(encode("HTTP/1.1 204 OK\r\n"));
