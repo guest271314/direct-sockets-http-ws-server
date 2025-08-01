@@ -110,15 +110,26 @@ onload = async () => {
                 this.ws.incomingStream.pipeTo(
                   new WritableStream({
                     write: async ({ opcode, payload }) => {
-                     console.log({opcode, payload});
-                      await this.ws.writeFrame(opcode, payload);
-                      if (opcode === this.ws.opcodes.CLOSE) {
-                        this.ws.incomingStreamController.close();
+                      // console.log({opcode, payload});
+                      if (opcode === this.ws.opcodes.CLOSE && payload.buffer.byteLength === 0) {
+                        return await this.ws.close(
+                            1000,
+                            payload,
+                          );
                       }
+                      await this.ws.writeFrame(opcode, payload);
                     },
                   }),
                 ).catch(() => {
                   console.log(`Incoming WebSocketStream closed`, this.ws);
+                  if (!this.ws.closed) {
+                    Promise.allthis.ws.incomingStreamController.close();Settled([
+                        this.ws?.writable?.close(),
+                        this.ws.writer.close(),
+                        this.ws.readable.cancel(),
+                        this.ws.close()
+                    ]).catch(console.log);
+                  }
                 });
               }
               if (/^OPTIONS/.test(request)) {
