@@ -123,11 +123,11 @@ onload = async () => {
                 ).catch(() => {
                   console.log(`Incoming WebSocketStream closed`, this.ws);
                   if (!this.ws.closed) {
-                    Promise.allthis.ws.incomingStreamController.close();Settled([
-                        this.ws?.writable?.close(),
-                        this.ws.writer.close(),
-                        this.ws.readable.cancel(),
-                        this.ws.close()
+                    Promise.allSettled([
+                      this.ws?.writable?.close(),
+                      this.ws.writer.close(),
+                      this.ws.readable.cancel(),
+                      this.ws.close(),
                     ]).catch(console.log);
                   }
                 });
