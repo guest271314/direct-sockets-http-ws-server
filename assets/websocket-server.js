@@ -40,7 +40,10 @@ class WebSocketConnection {
           for (let i = 0, j = byteLength; i < frame.length; i++, j++) {
             view.setUint8(j, frame.at(i));
           }
-          await this.processFrame();
+          const processedFrame = await this.processFrame();
+          if (processedFrame === this.opcodes.CLOSE) {
+            break;
+          }
         } else {
           break;
         }
@@ -75,6 +78,7 @@ class WebSocketConnection {
       } else if (length == 127) {
         if (view.getUint32(2, !1) != 0) {
           await this.close(1009, "");
+          return this.opcodes.CLOSE;
         }
         length = view.getUint32(6, !1);
         idx += 8;
@@ -89,14 +93,9 @@ class WebSocketConnection {
     payload = this.unmask(maskBytes, payload);
     this.incomingStreamController.enqueue({ opcode, payload });
     if (this.buffer.byteLength === 0 && this.closed) {
-      try {
-        return !0;
-      } catch (e) {
-        console.log(e);
-      }
+      return !0;
     }
     if (idx + length === 0) {
-      console.log(`this.buffer.length: ${this.buffer.byteLength}.`);
       return !1;
     }
 
@@ -104,7 +103,20 @@ class WebSocketConnection {
       view.setUint8(i, view.getUint8(j));
     }
     this.buffer.resize(this.buffer.byteLength - (idx + length));
-    return !0;
+    return opcode === this.opcodes.CLOSE ? opcode : !0;
+  }
+  async send(obj) {
+    let opcode, payload;
+    if (obj instanceof Uint8Array) {
+      opcode = this.opcodes.BINARY;
+      payload = obj;
+    } else if (typeof obj == "string") {
+      opcode = this.opcodes.TEXT;
+      payload = new TextEncoder().encode(obj);
+    } else {
+      throw new Error("Cannot send object. Must be string or Uint8Array");
+    }
+    await this.writeFrame(opcode, payload);
   }
   async writeFrame(opcode, buffer) {
     await this.writer.ready;
@@ -134,45 +146,42 @@ class WebSocketConnection {
         reason = buffer.subarray(2);
       }
       return await this.close(code, reason)
-        .then(() =>
-          console.log("Close opcode.", code, new TextDecoder().decode(reason))
-        );
+        .then(({ closeCode, reason }) => console.log({ closeCode, reason }));
     } else {
       return await this.close(1002, "unknown opcode");
     }
   }
-  async send(obj) {
-    let opcode, payload;
-    if (obj instanceof Uint8Array) {
-      opcode = this.opcodes.BINARY;
-      payload = obj;
-    } else if (typeof obj == "string") {
-      opcode = this.opcodes.TEXT;
-      payload = new TextEncoder().encode(obj);
-    } else {
-      throw new Error("Cannot send object. Must be string or Uint8Array");
-    }
-    await this.writeFrame(opcode, payload);
-  }
+
   async close(code, reason) {
     const opcode = this.opcodes.CLOSE;
-    let buffer;
+    let buffer, view;
     if (code) {
       buffer = new Uint8Array(reason.length + 2);
-      const view = new DataView(buffer.buffer);
+      view = new DataView(buffer.buffer);
       view.setUint16(0, code, !1);
       buffer.set(reason, 2);
     } else {
       buffer = new Uint8Array(0);
     }
-    console.log({ opcode, reason, buffer }, new TextDecoder().decode(reason));
+    // console.log({ opcode, reason, buffer }, new TextDecoder().decode(reason));
     this.incomingStreamController.close();
     await this.writer.write(this.encodeMessage(opcode, buffer))
       .catch(console.log);
     await this.writer.close();
     await this.writer.closed;
+    await Promise.allSettled([
+      this.readable.cancel(),
+    ]).catch(console.log);
     this.buffer.resize(0);
     this.closed = !0;
+    const closeCodes = {
+      closeCode: view.getUint16(0, !1),
+      reason: new TextDecoder().decode(reason),
+    };
+    if (closeCodes.closeCode === 1000) {
+      console.log(closeCodes);
+    }
+    return closeCodes;
   }
   unmask(maskBytes2, data) {
     let payload = new Uint8Array(data.length);
@@ -215,8 +224,10 @@ class WebSocketConnection {
     // Use Web Cryptography API crypto.subtle where defined
     console.log(secKeyWebSocket, globalThis?.crypto?.subtle);
     const encoder = new TextEncoder();
+    let key;
+    // https://codereview.stackexchange.com/a/297758/47730
     if (globalThis?.crypto?.subtle) {
-      const key = btoa(
+      key = btoa(
         [
           ...new Uint8Array(
             await crypto.subtle.digest(
@@ -228,36 +239,25 @@ class WebSocketConnection {
           ),
         ].map((s) => String.fromCodePoint(s)).join(""),
       );
-      const header = `HTTP/1.1 101 Web Socket Protocol Handshake\r
-Upgrade: WebSocket\r
-Connection: Upgrade\r
-sec-websocket-accept: ` + key + `\r
-\r
-`;
-      return writable instanceof WritableStream
-        ? (new Response(header)).body.pipeTo(writable, { preventClose: !0 })
-        : writable.write(encoder.encode(header));
     } else {
       // txiki.js does not support Web Cryptography API crypto.subtle
       // Use txiki.js specific tjs:hashing or
       // https://raw.githubusercontent.com/kawanet/sha1-uint8array/main/lib/sha1-uint8array.ts
       const { createHash } = await import("./sha1-uint8array.min.js");
-      const encoder = new TextEncoder();
       const hash = createHash("sha1").update(
         `${secKeyWebSocket}${WebSocketConnection.KEY_SUFFIX}`,
       ).digest();
-      const key = btoa(
+      key = btoa(
         String.fromCodePoint(...hash),
       );
-      const header = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" +
-        "Upgrade: WebSocket\r\n" +
-        "Connection: Upgrade\r\n" +
-        "Sec-Websocket-Accept: " + key + "\r\n\r\n";
-      const encoded = encoder.encode(header);
-      return writable instanceof WritableStream
-        ? new Response(encode).body.pipeTo(writable, { preventClose: !0 })
-        : writable.write(encoded);
     }
+    const header = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" +
+      "Upgrade: WebSocket\r\n" +
+      "Connection: Upgrade\r\n" +
+      "Sec-Websocket-Accept: " + key + "\r\n\r\n";
+    return writable instanceof WritableStream
+      ? new Response(header).body.pipeTo(writable, { preventClose: true })
+      : writable.write(encoder.encode(header));
   }
 }
 
