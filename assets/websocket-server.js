@@ -42,6 +42,7 @@ class WebSocketConnection {
           }
           const processedFrame = await this.processFrame();
           if (processedFrame === this.opcodes.CLOSE) {
+            console.log(processedFrame);
             break;
           }
         } else {
@@ -98,7 +99,6 @@ class WebSocketConnection {
     if (idx + length === 0) {
       return !1;
     }
-
     for (let i = 0, j = idx + length; j < this.buffer.byteLength; i++, j++) {
       view.setUint8(i, view.getUint8(j));
     }
@@ -191,41 +191,39 @@ class WebSocketConnection {
     return payload;
   }
   encodeMessage(opcode, payload) {
-    let buffer, b1 = 128 | opcode, b2 = 0, length = payload.length;
+    // https://codereview.stackexchange.com/a/297758/47730
+    let buffer, b1 = 128 | opcode, b2 = 0, length = payload.length, index;
+    const extra = [2, 4, 10];
     if (length < 126) {
-      buffer = new Uint8Array(payload.length + 2 + 0);
-      const view = new DataView(buffer.buffer);
+      index = 0;
       b2 |= length;
-      view.setUint8(0, b1);
-      view.setUint8(1, b2);
-      buffer.set(payload, 2);
     } else if (length < 65536) {
-      buffer = new Uint8Array(payload.length + 2 + 2);
-      const view = new DataView(buffer.buffer);
+      index = 1;
       b2 |= 126;
-      view.setUint8(0, b1);
-      view.setUint8(1, b2);
-      view.setUint16(2, length);
-      buffer.set(payload, 4);
     } else {
-      buffer = new Uint8Array(payload.length + 2 + 8);
-      const view = new DataView(buffer.buffer);
+      index = 2;
       b2 |= 127;
-      view.setUint8(0, b1);
-      view.setUint8(1, b2);
-      view.setUint32(2, 0, !1);
-      view.setUint32(6, length, !1);
-      buffer.set(payload, 10);
     }
+    buffer = new Uint8Array(payload.length + extra[index]);
+    const view = new DataView(buffer.buffer);
+    view.setUint8(0, b1);
+    view.setUint8(1, b2);
+    if (length >= 126 && length < 65536) {
+      view.setUint16(2, length);
+    } else if (length >= 65536) {
+      view.setUint32(2, 0, false);
+      view.setUint32(6, length, false);
+    }
+    buffer.set(payload, extra[index]);
     return buffer;
   }
   static KEY_SUFFIX = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  // https://codereview.stackexchange.com/a/297758/47730
   static async hashWebSocketKey(secKeyWebSocket, writable) {
     // Use Web Cryptography API crypto.subtle where defined
     console.log(secKeyWebSocket, globalThis?.crypto?.subtle);
     const encoder = new TextEncoder();
     let key;
-    // https://codereview.stackexchange.com/a/297758/47730
     if (globalThis?.crypto?.subtle) {
       key = btoa(
         [
