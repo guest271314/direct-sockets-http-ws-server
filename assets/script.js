@@ -1,4 +1,5 @@
 import { WebSocketConnection } from "./websocket-server.js";
+import { getChunkData } from "./get-chunked-data.js";
 // Get Request-Line and Headers
 // TODO: Get request line URI, protocol
 function getHeaders(r) {
@@ -74,6 +75,9 @@ onload = async () => {
           remoteAddress,
           remotePort,
         });
+        // Transfer-Encoding: chunked 
+        let pendingChunkLength = 0;
+        let len = 0;
 
         // Don't await to handle multiple requests
         client.pipeTo(
@@ -92,6 +96,40 @@ onload = async () => {
                 await this.wsWriter.ready;
                 await this.wsWriter.write(r);
               }
+              // Handle Transfer-Encoding: chunked
+              if (!/(GET|POST|HEAD|OPTIONS|QUERY)/i.test(request) && !this.ws) {
+                if (pendingChunkLength) {
+                  let rest = r.subarray(0, pendingChunkLength);
+                  len += rest.length;
+                  console.log(rest, len);
+                  let {
+                    crlfIndex,
+                    chunkLength,
+                    chunkBuffer,
+                    inputBufferLength,
+                  } = getChunkedData(r.subarray(pendingChunkLength - 1));
+                  if (chunkBuffer && chunkBuffer.length) {
+                    len += chunkBuffer.length;
+                    // Do stuff with data
+                    console.log(chunkBuffer, len, inputBufferLength, crlfIndex);
+                  }
+                  pendingChunkLength = 0;
+                  return;
+                }
+                let {
+                  crlfIndex,
+                  chunkLength,
+                  chunkBuffer,
+                  inputBufferLength,
+                } = getChunkedData(r);
+                len += chunkBuffer.length;
+                console.log(chunkBuffer, len);
+                if (len === 1024 ** 2) {
+                }
+                if (chunkBuffer.length < chunkLength) {
+                  pendingChunkLength = chunkLength - chunkBuffer.length;
+                }
+              }             
               // Handle WebSocket request
               if (/^GET/.test(request) && /websocket/i.test(request)) {
                 const { headers, method, uri, servertype } = getHeaders(
