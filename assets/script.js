@@ -70,12 +70,13 @@ onload = async () => {
 
         const writer = writable.getWriter();
         globalThis.writer = writer;
-
+        const requestAbortController = new AbortController();
         console.log({
           remoteAddress,
           remotePort,
         });
         // Transfer-Encoding: chunked 
+        const closeChunkData = new Uint8Array([48, 13, 10, 13, 10]);
         let pendingChunkLength = 0;
         let len = 0;
 
@@ -96,12 +97,12 @@ onload = async () => {
                 await this.wsWriter.ready;
                 await this.wsWriter.write(r);
               }
-              // Handle Transfer-Encoding: chunked
+              // Handle Transfer-Encoding: chunked streaming request
               if (!/(GET|POST|HEAD|OPTIONS|QUERY)/i.test(request) && !this.ws) {
                 if (pendingChunkLength) {
-                  let rest = r.subarray(0, pendingChunkLength);
-                  len += rest.length;
-                  console.log(rest, len);
+                  const pendingChunkData = r.subarray(0, pendingChunkLength);
+                  len += pendingChunkData.length;
+                  console.log(pendingChunkData, len);
                   let {
                     crlfIndex,
                     chunkLength,
@@ -110,8 +111,7 @@ onload = async () => {
                   } = getChunkedData(r.subarray(pendingChunkLength - 1));
                   if (chunkBuffer && chunkBuffer.length) {
                     len += chunkBuffer.length;
-                    // Do stuff with data
-                    console.log(chunkBuffer, len, inputBufferLength, crlfIndex);
+                    console.log(chunkBuffer, len);
                   }
                   pendingChunkLength = 0;
                   return;
@@ -122,14 +122,49 @@ onload = async () => {
                   chunkBuffer,
                   inputBufferLength,
                 } = getChunkedData(r);
-                len += chunkBuffer.length;
-                console.log(chunkBuffer, len);
-                if (len === 1024 ** 2) {
+
+                if (
+                  chunkBuffer.length === 0 &&
+                  chunkBuffer.buffer.byteLength === closeChunkData.buffer.byteLength
+                ) {
+                  const buffer = new Uint8Array(chunkBuffer.buffer);
+                  // Close data
+                  const closeBytes = closeChunkData.every((v, k) =>
+                    v === buffer[k]
+                  );
+                  console.log({ closeBytes, buffer });
+                  await writer.write(
+                    encode(
+                      "HTTP/1.1 200 OK\r\n" +
+                        "Content-Type: application/octet-stream\r\n" +
+                        "Access-Control-Allow-Origin: *\r\n" +
+                        "Access-Control-Allow-Private-Network: true\r\n" +
+                        "Access-Control-Allow-Headers: Access-Control-Request-Private-Network\r\n" +
+                        "Cache-Control: no-cache\r\n" +
+                        "Connection: keepalive\r\n" +
+                        "Transfer-Encoding: chunked\r\n\r\n",
+                    ),
+                  );
+
+                  const chunk = encode(`Received ${len} bytes from client`);
+                  const size = chunk.buffer.byteLength.toString(16);
+                  await writer.write(encode(`${size}\r\n`));
+                  await writer.write(chunk.buffer);
+                  await writer.write(encode("\r\n"));
+                  await writer.write(encode("0\r\n"));
+                  await writer.write(encode("\r\n"));
+                  await writer.close();
+                  await writer.closed;
+                  requestAbortController.abort("Transfer-Encoding: chunked request aborted");
+                  return;
+                } else {
+                  len += chunkBuffer.length;
                 }
+                console.log(chunkBuffer, len);
                 if (chunkBuffer.length < chunkLength) {
                   pendingChunkLength = chunkLength - chunkBuffer.length;
                 }
-              }             
+              }          
               // Handle WebSocket request
               if (/^GET/.test(request) && /websocket/i.test(request)) {
                 const { headers, method, uri, servertype } = getHeaders(
@@ -239,7 +274,10 @@ onload = async () => {
               console.log(reason);
             },
           }),
-        ).catch(console.warn);
+          { signal: requestAbortController.signal },
+        ).catch((e) => e?.message || e).then((message) =>
+          console.log("Client closed", message)
+        );
       },
       close() {
         console.log("Host closed");
