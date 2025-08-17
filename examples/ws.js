@@ -13,75 +13,62 @@ await scheduler.postTask(() => {}, {
   delay: 3000,
   priority: "user-visible",
 });
-// Only aborts *before* the handshake
-var abortable = new AbortController();
-var { signal } = abortable;
-var wss = new WebSocketStream("ws://127.0.0.1:44818", {
-  signal,
-});
+
+var decoder = new TextDecoder();
+var encoder = new TextEncoder();
+
+var wss = new WebSocketStream("ws://127.0.0.1:44818");
 console.log(wss);
 
-var { readable, writable } = await wss.opened.catch(console.warn);
+var {readable, writable} = await wss.opened.catch(console.warn);
 
-var connection = wss.closed.then(({ closeCode, reason }) => {
-  return `WebSocketStream closed. closeCode: ${closeCode}, reason: ${reason}`;
-}).catch((e) => {
-  return e.message;
-});
-
-var writer = writable.getWriter();
 var reader = readable.getReader();
-var len = 0;
-var encoder = new TextEncoder();
-var decoder = new TextDecoder();
-var data = new Uint8Array(1024 ** 2).fill(97);
-var len = 0;
-for (let i = 0; i < data.length; i += 65536) {
-  try {
-    await writer.ready;
-    await writer.write(data.subarray(i, i + 65536));
-    // console.log(writer.desiredSize);
-    const { value: v, done } = await reader.read();
-    if (typeof v === "string") {
-      console.log(v);
-    } else {
-      const decoded = decoder.decode(v, {
-        stream: true,
+var writer = writable.getWriter();
+
+Promise.allSettled([writable.closed, readable.closed, wss.closed])
+  .then( ([,,{value: {closeCode, reason}}]) => console.log({
+  closeCode,
+  reason
+}));
+
+async function write(data) {
+  const len = 65536;
+  let bytes = 0;
+  if (typeof data === "string") {
+    for (let i = 0; i < data.length; i += len) {
+      await writer.write(data.slice(i, i + len));
+      await writer.ready;
+      await scheduler.postTask( () => {}
+      , {
+        delay: 5
       });
-      console.log(len += v.byteLength, v, [...decoded].every((s) => s === "a"));
+      const {value, done} = await reader.read();
+      console.log(value, bytes += value.length);
     }
-  } catch (e) {
-    console.warn(e);
+  } else {
+    for await(const value of new Response(data).body) {
+      for (let i = 0; i < data.length; i += len) {
+        await writer.write(data.subarray(i, i + len));
+        await writer.ready;
+        await scheduler.postTask( () => {}
+        , {
+          delay: 5
+        });
+        const {value, done} = await reader.read();
+        console.log(value, bytes += value.byteLength);
+        await scheduler.postTask( () => {}
+        , {
+          delay: 5
+        });
+      }
+    }
   }
+  return bytes;
 }
 
-console.assert(len === data.buffer.byteLength, [len, data.buffer.byteLength]);
-console.log(len, data.buffer.byteLength);
-await writer.ready;
-await writer.write("Text").then(() => reader.read()).then(console.log).catch(
-  console.warn,
-);
+var x = await write(new Uint8Array(1024 ** 2 * 10));
+// var z = await write("x".repeat(1024**2));
 
-try {
-  writer.releaseLock();
-  reader.releaseLock();
-  wss.close({
-    closeCode: 1000,
-    reason: "Done streaming",
-  });
-  // await writer.close();
-  // await writer.closed;
-} catch {}
+console.log(x);
 
-function handleClose(args) {
-  return args;
-}
-await Promise.allSettled([
-  reader.closed.then(
-    handleClose.bind(null, `readable.locked ${readable.locked}`),
-  ).catch(handleClose.bind(null, `readable.locked ${readable.locked}`)),
-  writer.closed.then(
-    handleClose.bind(null, `writable.locked ${writable.locked}`),
-  ).catch(handleClose.bind(null, `writable.locked ${writable.locked}`)),
-  connection,
-]).then((result) => console.log(result));
+await writer.close();
