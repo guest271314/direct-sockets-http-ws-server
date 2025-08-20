@@ -32,34 +32,22 @@ Promise.allSettled([writable.closed, readable.closed, wss.closed])
 }));
 
 async function write(data) {
-  const len = 65536;
+  const len = 65536/2;
   let bytes = 0;
   if (typeof data === "string") {
     for (let i = 0; i < data.length; i += len) {
-      await writer.write(data.slice(i, i + len));
       await writer.ready;
-      await scheduler.postTask( () => {}
-      , {
-        delay: 5
-      });
+      await writer.write(data.slice(i, i + len));
       const {value, done} = await reader.read();
       console.log(value, bytes += value.length);
     }
   } else {
     for await(const value of new Response(data).body) {
       for (let i = 0; i < data.length; i += len) {
-        await writer.write(data.subarray(i, i + len));
         await writer.ready;
-        await scheduler.postTask( () => {}
-        , {
-          delay: 5
-        });
+        await writer.write(data.subarray(i, i + len));
         const {value, done} = await reader.read();
         console.log(value, bytes += value.byteLength);
-        await scheduler.postTask( () => {}
-        , {
-          delay: 5
-        });
       }
     }
   }
