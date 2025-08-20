@@ -32,7 +32,7 @@ Promise.allSettled([writable.closed, readable.closed, wss.closed])
 }));
 
 async function write(data) {
-  const len = 65536/2;
+  const len = 65536;
   let bytes = 0;
   if (typeof data === "string") {
     for (let i = 0; i < data.length; i += len) {
@@ -51,6 +51,13 @@ async function write(data) {
       }
     }
   }
+  // Read until done
+  // This hangs. read() fulfills before writer.close(), possible race condition
+  // return reader.read().then(({value, done}) => {
+  //   console.log(value, done);
+  //   return bytes;
+  // });
+  reader.read().then(console.log);
   return bytes;
 }
 
