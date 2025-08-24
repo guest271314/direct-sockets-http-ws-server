@@ -61,12 +61,6 @@ console.log({
   textResult,
 });
 
-Promise.allSettled([reader.read()]).then(([readerResult]) =>
-  console.log({
-    readerResult,
-  })
-);
-
 wss.close({
   closeCode: 4999,
   reason: "Done streaming",
