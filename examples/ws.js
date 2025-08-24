@@ -11,11 +11,10 @@ if (globalThis?.openIsolatedWebApp) {
 }
 
 await scheduler.postTask(() => {}, {
-  delay: 4000,
-  priority: "user-visible",
+  delay: 350,
 });
 
-var u8 = new Uint8Array(1024 ** 2 * 10).fill(1);
+var u8 = new Uint8Array(1024 ** 2 * 20).fill(1);
 var decoder = new TextDecoder();
 var encoder = new TextEncoder();
 
@@ -29,10 +28,10 @@ var writer = writable.getWriter();
 
 Promise.allSettled([writable.closed, readable.closed, wss.closed]).then((
   args,
-) => console.log(args));
+) => console.log(args)).catch(console.error);
 
-async function write(data) {
-  const len = 65536 / 2;
+async function stream(data) {
+  const len = 65536;
   let bytes = 0;
 
   if (typeof data === "string") {
@@ -43,25 +42,38 @@ async function write(data) {
       bytes += value.length;
     }
   } else {
-    for await (const value of new Response(data).body) {
-      for (let i = 0; i < data.length; i += len) {
-        const d = data.subarray(i, i + len);
-        await writer.ready;
-        await writer.write(d);
-        const { value, done } = await reader.read();
-        bytes += value.byteLength;
-      }
+    for (let i = 0; i < data.length; i += len) {
+      const uint8 = data.subarray(i, i + len);
+      await writer.ready;
+      await writer.write(uint8);
+      const { value, done } = await reader.read();
+      bytes += value.byteLength;
     }
   }
-  reader.read().then(console.log);
   return bytes;
 }
 
-var x = await write(u8);
-// var z = await write("x".repeat(1024**2));
-console.log(x);
+var binaryResult = await stream(u8).catch((e) => e);
+var textResult = await stream("text").catch((e) => e);
 
-await writer.ready;
-await writer.close();
-await writer.closed.then(() => console.log("writer closed"));
-await reader.closed.then(() => console.log("reader closed"));
+console.log({
+  binaryResult,
+  textResult,
+});
+
+Promise.allSettled([reader.read()]).then(([readerResult]) =>
+  console.log({
+    readerResult,
+  })
+);
+
+wss.close({
+  closeCode: 4999,
+  reason: "Done streaming",
+});
+/*
+await writer.ready.catch(console.log);
+await writer.close().catch(console.log);
+await writer.closed.then( () => console.log("writer closed")).catch((e) => console.log(e));
+await reader.closed.then( () => console.log("reader closed")).catch((e) => console.log(e));
+*/
