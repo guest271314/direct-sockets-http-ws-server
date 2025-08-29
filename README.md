@@ -262,83 +262,62 @@ fetch("http://0.0.0.0:44818", {
 ### WebSocket client
 
 ```
+var u8 = new Uint8Array(1024 ** 2 * 20).fill(1);
+
 // Only aborts *before* the handshake
 var abortable = new AbortController();
 var {
   signal,
 } = abortable;
 var wss = new WebSocketStream("ws://127.0.0.1:44818", {
-  signal,
+  signal
 });
+console.log(wss);
 
-var {
-  readable,
-  writable,
-} = await wss.opened.catch(console.warn);
+var { readable, writable } = await wss.opened.catch(console.warn);
 
-var connection = wss.closed.then(({ closeCode, reason }) => {
-  return `WebSocketStream closed. closeCode: ${closeCode}, reason: ${reason}`;
-}).catch((e) => {
-  return e.message;
-});
-var writer = writable.getWriter();
 var reader = readable.getReader();
-var len = 0;
-var encoder = new TextEncoder();
-var decoder = new TextDecoder();
-var data = new Uint8Array(1024 ** 2).fill(97);
-for (let i = 0; i < data.length; i += 65536) {
-  try {
-    await writer.ready;
-    await writer.write(data.subarray(i, i + 65536));
-    // console.log(writer.desiredSize);
-    const {
-      value: v,
-      done,
-    } = await reader.read();
-    if (typeof v === "string") {
-      console.log(v);
-    } else {
-      const decoded = decoder.decode(v, {
-        stream: true,
-      });
-      console.log(
-        len += v.byteLength,
-        v,
-        [...decoded].every((s) => s === "a"),
-      );
+var writer = writable.getWriter();
+
+Promise.allSettled([writable.closed, readable.closed, wss.closed]).then((
+  args,
+) => console.log(args)).catch(console.error);
+
+async function stream(data) {
+  const len = 65536;
+  let bytes = 0;
+
+  if (typeof data === "string") {
+    for (let i = 0; i < data.length; i += len) {
+      await writer.ready;
+      await writer.write(data.slice(i, i + len));
+      const { value, done } = await reader.read();
+      bytes += value.length;
     }
-  } catch (e) {
-    console.warn(e);
+  } else {
+    for (let i = 0; i < data.length; i += len) {
+      const uint8 = data.subarray(i, i + len);
+      await writer.ready;
+      await writer.write(uint8);
+      const { value, done } = await reader.read();
+      bytes += value.byteLength;
+    }
   }
+  return bytes;
 }
 
-console.assert(len === data.buffer.byteLength, [len, data.buffer.byteLength]);
-console.log(len, data.buffer.byteLength);
-await writer.ready;
-await writer.write("Text").then(() => reader.read()).then(console.log).catch(
-  console.warn,
-);
+var binaryResult = await stream(u8).catch((e) => e);
+var textResult = await stream("text").catch((e) => e);
 
-try {
-  writer.releaseLock();
-  reader.releaseLock();
-  wss.close({ closeCode: 1000, reason: "Done streaming" });
-} catch {}
+console.log({
+  binaryResult,
+  textResult,
+});
 
-function handleClose(args) {
-  return args;
-}
-await Promise.allSettled([
-  reader.closed
-    .then(handleClose.bind(null, `readable.locked ${readable.locked}`))
-    .catch(handleClose.bind(null, `readable.locked ${readable.locked}`)),
-  writer.closed
-    .then(handleClose.bind(null, `writable.locked ${writable.locked}`))
-    .catch(handleClose.bind(null, `writable.locked ${writable.locked}`)),
-  connection,
-])
-  .then((result) => console.log(result));
+wss.close({
+  closeCode: 4999,
+  reason: "Done streaming",
+});
 
 ```
 
