@@ -105,7 +105,7 @@ onload = async () => {
                 if (pendingChunkLength) {
                   const pendingChunkData = r.subarray(0, pendingChunkLength);
                   len += pendingChunkData.length;
-                  console.log(pendingChunkData, len);
+                  // console.log(pendingChunkData, len);
                   let {
                     crlfIndex,
                     chunkLength,
@@ -149,8 +149,8 @@ onload = async () => {
                         "Transfer-Encoding: chunked\r\n\r\n",
                     ),
                   );
-
-                  const chunk = encode(`Received ${len} bytes from client`);
+                  const message = `Received ${len} bytes from client`;
+                  const chunk = encode(message);
                   const size = chunk.buffer.byteLength.toString(16);
                   await writer.write(encode(`${size}\r\n`));
                   await writer.write(chunk.buffer);
@@ -160,6 +160,7 @@ onload = async () => {
                   await writer.close();
                   await writer.closed;
                   requestAbortController.abort("Transfer-Encoding: chunked request aborted");
+                  console.log(message);
                   return;
                 } else {
                   len += chunkBuffer.length;
