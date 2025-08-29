@@ -99,6 +99,9 @@ onload = async () => {
               }
               // Handle Transfer-Encoding: chunked streaming request
               if (!/(GET|POST|HEAD|OPTIONS|QUERY)/i.test(request) && !this.ws) {
+                if (len === 0) {
+                  console.groupCollapsed("chunked");
+                }
                 if (pendingChunkLength) {
                   const pendingChunkData = r.subarray(0, pendingChunkLength);
                   len += pendingChunkData.length;
@@ -111,7 +114,7 @@ onload = async () => {
                   } = getChunkedData(r.subarray(pendingChunkLength - 1));
                   if (chunkBuffer && chunkBuffer.length) {
                     len += chunkBuffer.length;
-                    console.log(chunkBuffer, len);
+                    // console.log(chunkBuffer, len);
                   }
                   pendingChunkLength = 0;
                   return;
@@ -132,7 +135,8 @@ onload = async () => {
                   const closeBytes = closeChunkData.every((v, k) =>
                     v === buffer[k]
                   );
-                  console.log({ closeBytes, buffer });
+                  // console.log({ closeBytes, buffer });
+                  console.groupEnd("chunked");
                   await writer.write(
                     encode(
                       "HTTP/1.1 200 OK\r\n" +
