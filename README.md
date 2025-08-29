@@ -168,95 +168,82 @@ const socket = new TCPServerSocket("0.0.0.0", {
     localPort: 44818,
     // EtherNet/IP
   });
-
 const { readable: server, localAddress, localPort } = await socket.opened;
-
-  console.log({ server });
-
-  await server.pipeTo(
-    new WritableStream({
-      async write(connection) {
-        const {
-          readable: client,
-          writable,
-          remoteAddress,
-          remotePort,
-        } = await connection.opened;
-        console.log({ connection });
-        const writer = writable.getWriter();
-        console.log({
-          remoteAddress,
-          remotePort,
-        });
-
-        const abortable = new AbortController();
-        const { signal } = abortable;
-        // Text streaming
-        // .pipeThrough(new TextDecoderStream())
-        await client.pipeTo(
-          new WritableStream({
-            start: (controller) => {
-              this.ws = void 0;
-              const {
-                readable: wsReadable,
-                writable: wsWritable
-              } = new TransformStream, wsWriter = wsWritable.getWriter();
-              Object.assign(this, { wsReadable, wsWritable, wsWriter });
-            },
-            async write(r, controller) {
-              // Do stuff with encoded request
-              const request = decoder.decode(r);
-              console.log(request);
-              // HTTP and WebSocket request and response logic              
-              if (/^OPTIONS/.test(request)) {
-                await writer.write(encode(`HTTP/1.1 204 OK\r`));
-                // ...
-              }
-              if (/^GET/.test(request) && /websocket/i.test(request)) {
-                // ...
-              }
-              if (!/(GET|POST|HEAD|OPTIONS|QUERY)/i.test(request)) {
-                await this.wsWriter.ready;
-                await this.wsWriter.write(r);
-              }
-            },
-            close: () => {
-              console.log("Client closed");
-            },
-            abort(reason) {
-              console.log(reason);
-            },
-          })
-        , {signal}).catch(console.warn);
-      },
-      close() {
-        console.log("Host closed");
-      },
-      abort(reason) {
-        console.log("Host aborted", reason);
-      },
-    }),
-  ).then(() => console.log("Server closed")).catch(console.warn);
-};
+const requests = [];
+Object.assign(globalThis, { socket, server, abortable, requests });
+await server.pipeTo(
+  new WritableStream({
+    async write(connection) {
+      const { readable: client, writable, remoteAddress, remotePort } = await connection.opened;
+      globalThis.requests.push({ remoteAddress, remotePort, client });
+      client.pipeTo(
+        new WritableStream({
+          write(r) {
+            const request = decoder.decode(r);
+            // Handle Transfer-Encoding: chunked 
+            if (!/(GET|POST|HEAD|OPTIONS|QUERY)/i.test(request) && !this.ws) {
+              // ...
+            }
+            // Handle WebSocket request
+            if (/^GET/.test(request) && /websocket/i.test(request)) {
+              // ...
+            }
+            if (/^OPTIONS/.test(request)) {
+              // ...
+            }
+            if (/^(POST|query)/i.test(request)) {
+              // ...
+            }
+          }
+        })
+      )
+    },
+  })
+)
 ```
 
 ### HTTP client
 
-Using WHATWG Fetch
+Using WHATWG Fetch, HTTP/1.1 `Transfer-Encoding: chunked` streaming request 
 
 ```
-fetch("http://0.0.0.0:44818", {
-  method: "post",
-  body: "test",
-  headers: {
-    "Access-Control-Request-Private-Network": true,
+var abortable = new AbortController();
+
+var { readable, writable } = new TransformStream({
+  async transform(v, c) {
+    for (let i = 0; i < v.length; i += 8192) {
+      if (abortable.signal.aborted) {
+        c.terminate();
+        break;
+      }
+      c.enqueue(v.subarray(i, i + 8192));
+      await scheduler.postTask(() => {}, { delay: 30 });
+    }
   },
-})
-  .then((r) => r.text()).then((text) =>
-    console.log({
-      text,
-    })
-  ).catch(console.error);
+  flush() {
+    console.log("flush");
+  },
+});
+var writer = writable.getWriter();
+var response = fetch("http://localhost:44818", {
+  method: "post",
+  duplex: "half",
+  body: readable,
+  signal: abortable.signal,
+  allowHTTP1ForStreamingUpload: true,
+}).then((r) => r.text())
+  .catch((e) => {
+    return e;
+  });
+await scheduler.postTask(() => {}, { delay: 45 });
+await writer.write(new Uint8Array(1024 ** 2 * 7).fill(1));
+await writer.ready
+  .then(() => writer.close())
+  .catch(() => {});
+await response.then((response) => {
+  console.log(response);
+});
+
 ```
 
 ### WebSocket client
@@ -322,5 +309,61 @@ wss.close({
 ```
 
 ## License
+fetch("http://0.0.0.0:44818", {
+  method: "post",
+  body: "test",
+  headers: {
+    "Access-Control-Request-Private-Network": true,
+  },
+})var abortable = new AbortController();
 
+var { readable, writable } = new TransformStream({
+  async transform(v, c) {
+    for (let i = 0; i < v.length; i+= 8192) {
+      c.enqueue(v.subarray(i, i + 8192));
+      await scheduler.postTask(() => {}, {delay:30});
+    }
+  }, 
+  flush() {
+    console.log("flush");
+    abortable.abort("");
+  }
+}, {highWaterMark:1});
+var writer = writable.getWriter();
+var response = fetch("http://localhost:44818", {
+  method: "post",
+  duplex: "half",
+  body: readable,
+  signal: abortable.signal,
+  allowHTTP1ForStreamingUpload: true
+}).then((r) => {
+  console.log(...r.headers);
+  return r.body.pipeTo(
+    new WritableStream({
+      write(v) {
+        console.log(v);
+      },
+      close() {
+        console.log("close");
+      }
+    })
+  )
+})
+  .catch((e) => {
+    console.log(e);
+  })
+.then(() => {
+  console.log("Done streaming");
+})
+.catch(console.log);
+await scheduler.postTask(() => {}, {delay:45});
+await writer.write(new Uint8Array(1024**2*5).fill(1));
+await writer.ready;
+await writer.close();
+
+  .then((r) => r.text()).then((text) =>
+    console.log({
+      text,
+    })
+  ).catch(console.error);
 Do What the Fuck You Want to Public License [WTFPLv2](http://www.wtfpl.net/about/)
