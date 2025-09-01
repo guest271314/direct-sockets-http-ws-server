@@ -153,6 +153,9 @@ class WebSocketConnection {
   }
 
   async close(code, reason) {
+    if (this.closed) {
+      return;
+    }
     const opcode = this.opcodes.CLOSE;
     let buffer, view;
     if (code) {
