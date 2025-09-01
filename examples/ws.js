@@ -28,7 +28,7 @@ var writer = writable.getWriter();
 
 Promise.allSettled([writable.closed, readable.closed, wss.closed]).then((
   args,
-) => console.log(args)).catch(console.error);
+) => console.log(args)).then(() => globalThis?.process?.exit(0)).catch(console.error);
 
 async function stream(data) {
   const len = 65536;
