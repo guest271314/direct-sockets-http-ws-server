@@ -3,7 +3,7 @@ import { getChunkData } from "./get-chunked-data.js";
 // Get Request-Line and Headers
 // TODO: Get request line URI, protocol
 function getHeaders(r) {
-  const header = r.match(/.+/g).map((line) => line.split(/:\s|\s\/\s/));
+  const header = r.match(/.+/g).map((line) => line.split(/:\s|\s\/\s/)).filter((h) => h.length > 1);
   const [requestLine] = header.shift();
   const [method, uri, protocol] = requestLine.split(/\s/);
   const headers = new Headers(header);
@@ -31,7 +31,7 @@ onload = async () => {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   const encode = (text) => encoder.encode(text);
-
+  const currentHeaders = new Headers();
   const socket = new TCPServerSocket("0.0.0.0", {
     localPort: 44818,
     // EtherNet/IP
@@ -100,7 +100,12 @@ onload = async () => {
               // Handle Transfer-Encoding: chunked streaming request
               if (!/(GET|POST|HEAD|OPTIONS|QUERY)/i.test(request) && !this.ws) {
                 if (len === 0) {
-                  console.groupCollapsed("chunked");
+                  // Handle Deno WebSocket client sending 22 (extra) bytes after WebSocket is closed
+                  if (!globalThis.currentHeaders.get("transfer-encoding")) {
+                    console.table([...globalThis.currentHeaders]);
+                    console.log(r);
+                    return;
+                  }
                 }
                 if (pendingChunkLength) {
                   const pendingChunkData = r.subarray(0, pendingChunkLength);
@@ -136,7 +141,7 @@ onload = async () => {
                     v === buffer[k]
                   );
                   // console.log({ closeBytes, buffer });
-                  console.groupEnd("chunked");
+                  // console.groupEnd("chunked");
                   await writer.write(
                     encode(
                       "HTTP/1.1 200 OK\r\n" +
@@ -165,7 +170,7 @@ onload = async () => {
                 } else {
                   len += chunkBuffer.length;
                 }
-                console.log(chunkBuffer, len);
+                // console.log(chunkBuffer, len);
                 if (chunkBuffer.length < chunkLength) {
                   pendingChunkLength = chunkLength - chunkBuffer.length;
                 }
@@ -185,6 +190,13 @@ onload = async () => {
                   throw e;
                 });
                 console.log(this.ws);
+                // Keep track of current request headers to handle Deno sending 22 extra bytes after WebSocket close
+                for (const k of globalThis.currentHeaders.keys()) {
+                  globalThis.currentHeaders.delete(k);
+                };
+                for (const [k, v] of headers) {
+                  globalThis.currentHeaders.set(k, v);
+                };
                 this.ws.incomingStream.pipeTo(
                   new WritableStream({
                     write: async ({ opcode, payload }) => {
@@ -234,42 +246,63 @@ onload = async () => {
               // Respond with Transfer-Encoding Content-Type
               // for uni-directional server to client streaming over HTTP/1.1
               if (/^(POST|query)/i.test(request)) {
-                const [body] = request.match(
-                  /(?<=\r\n\r\n)[a-zA-Z\d\s\r\n-:;=]+/igm,
+                const { headers, method, uri, servertype } = getHeaders(
+                  request,
                 );
-                console.log({
-                  body,
-                });
-                await writer.write(encode("HTTP/1.1 200 OK\r\n"));
-                await writer.write(
-                  encode("Content-Type: application/octet-stream\r\n"),
-                );
-                await writer.write(
-                  encode("Access-Control-Allow-Origin: *\r\n"),
-                );
-                await writer.write(
-                  encode("Access-Control-Allow-Private-Network: true\r\n"),
-                );
-                await writer.write(
-                  encode(
-                    "Access-Control-Allow-Headers: Access-Control-Request-Private-Network\r\n",
-                  ),
-                );
-                await writer.write(encode("Cache-Control: no-cache\r\n"));
-                await writer.write(encode("Connection: close\r\n"));
-                await writer.write(
-                  encode("Transfer-Encoding: chunked\r\n\r\n"),
-                );
+                // Handle Deno WebSocket client sending 22 (extra) bytes after WebSocket is closed, e.g., 
+                // [136, 144, 234, 110, 246, 61, 249, 233, 178, 82, 132, 11, 214, 78, 158, 28, 147, 92, 135, 7, 152, 90]
+                // [136, 144, 51, 194, 179, 223, 32, 69, 247, 176, 93, 167, 147, 172, 71, 176, 214, 190, 94, 171, 221, 184]
+                // which can wind up in Transfer-Encoding: chunked parsing block
+                for (const k of globalThis.currentHeaders.keys()) {
+                  globalThis.currentHeaders.delete(k);
+                };
+                for (const [k, v] of headers) {
+                  globalThis.currentHeaders.set(k, v);
+                };
+                // Handle Firefox Transfer-Encoding: chunked POST request, and Chromium
+                // which does not provide HTTP/1.1 streaming upload as
+                // Chromium with `duplex: "half", body: readable, allowHTTP1ForStreamingUpload: true`
+                if (globalThis.currentHeaders.has("content-length")) {
+                  try {
+                    const body = r.subarray(
+                      -(globalThis.currentHeaders.get("content-length")),
+                    );
+                    // const [body] = request.match(
+                    //  (?<=\r\n\r\n)[a-zA-Z\d\s\r\n-:;=]+/igm,
+                    // );
+                    console.log({
+                      body,
+                    });
+                    await writer.ready;
+                    await writer.write(
+                      encode(
+                        "HTTP/1.1 200 OK\r\n" +
+                          "Content-Type: application/octet-stream\r\n" +
+                          "Access-Control-Allow-Origin: *\r\n" +
+                          "Access-Control-Allow-Private-Network: true\r\n" +
+                          "Access-Control-Allow-Headers: Access-Control-Request-Private-Network\r\n" +
+                          "Cache-Control: no-cache\r\n" +
+                          "Connection: keepalive\r\n" +
+                          "Transfer-Encoding: chunked\r\n\r\n",
+                      ),
+                    );
+                    // Streaming response to fetch() => Response.body
+                    for (let i = 0; i < body.length; i++) {
+                      const chunk = body.subarray(i, i + 1);
+                      const size = chunk.length.toString(16);
+                      await writer.write(encode(`${size}\r\n`));
+                      await writer.write(chunk);
+                      await writer.write(encode("\r\n"));
+                    }
 
-                const chunk = encode(body.toUpperCase());
-                const size = chunk.buffer.byteLength.toString(16);
-                await writer.write(encode(`${size}\r\n`));
-                await writer.write(chunk.buffer);
-                await writer.write(encode("\r\n"));
-
-                await writer.write(encode("0\r\n"));
-                await writer.write(encode("\r\n"));
-                await writer.close();
+                    await writer.write(encode("0\r\n"));
+                    await writer.write(encode("\r\n"));
+                    await writer.close();
+                  } catch (e) {
+                    console.log(e);
+                    console.table([...headers]);
+                  }
+                }
               }
             },
             close: () => {
