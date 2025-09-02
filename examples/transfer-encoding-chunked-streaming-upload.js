@@ -26,6 +26,7 @@ var response = fetch("http://localhost:44818", {
   .catch((e) => {
     return e;
   });
+// Use dealy here to avoid including part of body in initial WritableStream({write()}) read
 await scheduler.postTask(() => {}, { delay: 45 });
 await writer.write(new Uint8Array(1024 ** 2 * 7).fill(1));
 await writer.ready
