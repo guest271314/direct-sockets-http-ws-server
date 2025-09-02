@@ -287,8 +287,8 @@ onload = async () => {
                       ),
                     );
                     // Streaming response to fetch() => Response.body
-                    for (let i = 0; i < body.length; i++) {
-                      const chunk = body.subarray(i, i + 1);
+                    for (let i = 0; i < body.length; i += 4096) {
+                      const chunk = body.subarray(i, i + 4096);
                       const size = chunk.length.toString(16);
                       await writer.write(encode(`${size}\r\n`));
                       await writer.write(chunk);
