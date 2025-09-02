@@ -298,6 +298,7 @@ onload = async () => {
                     await writer.write(encode("0\r\n"));
                     await writer.write(encode("\r\n"));
                     await writer.close();
+                    globalThis.currentHeaders.delete("content-length");
                     requestAbortController.abort("Transfer-Encoding: chunked request aborted");
                   } catch (e) {
                     console.log(e);
