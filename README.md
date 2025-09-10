@@ -61,7 +61,14 @@ Launch Chromium or Chrome with
 --unsafely-treat-insecure-origin-as-secure=http://0.0.0.0:44818,ws://0.0.0.0:44818
 ```
 
-to avoid Chromium rendering insecure connection notification in the address bar.
+to avoid Chromium rendering insecure connection notification in the address bar, and
+
+```
+--disable-features=LocalNetworkAccessChecks,LocalWebApprovals
+```
+
+to disable this https://github.com/WICG/local-network-access (which blocks `WebSocket` requests to `localhost` 
+on Chromium Version 142.0.7401.0 (Developer Build) (64-bit)).
 
 ### Isolated Web App and Signed Web Bundle
 
