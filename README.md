@@ -64,7 +64,7 @@ Launch Chromium or Chrome with
 to avoid Chromium rendering insecure connection notification in the address bar, and
 
 ```
---disable-features=LocalNetworkAccessChecks,LocalWebApprovals
+--disable-features=LocalNetworkAccessChecks,LocalWebApprovals,LocalNetworkAccessChecksWebSockets
 ```
 
 to disable this https://github.com/WICG/local-network-access (which blocks `WebSocket` requests to `localhost` 
