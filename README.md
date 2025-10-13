@@ -86,24 +86,6 @@ on Chromium Version 142.0.7401.0 (Developer Build) (64-bit)).
 
 ## Building
 
-### Fetch dependencies
-
-```
-bun install
-```
-
-or 
-
-```
-npm install
-```
-
-or 
-
-```
-deno add npm:wbn
-```
-
 ### Signed Web Bundle/Isolated Web App source files
 
 Entry point is `assets` directory which contains `index.html`, `script.js`, `.well-known` directory with `manifest.webmanifest`, and any other scripts or resources to be bundled. 
@@ -131,9 +113,8 @@ Bun
 bun run index.js
 ```
 
-Deno (Can be run without `node_modules` folder in current directory; fetches dependencies from https://esm.sh)
 ```
-deno -A --import-map import-map.json index.js
+DENO_COMPAT=1 deno -A index.js
 ```
 
 ### Build/rebuild `wbn-bundle.js` from `webbundle-plugins/packages/rollup-plugin-webbundle/src/index.ts` with `bun`
@@ -256,16 +237,27 @@ await response.then((response) => {
 ### WebSocket client
 
 ```
-var u8 = new Uint8Array(1024 ** 2 * 20).fill(1);
+function setTitle(data) {
+  const title = document.title;
+  document.title = title + data;
+  document.title = title;
+}
 
-// Only aborts *before* the handshake
-var abortable = new AbortController();
-var {
-  signal,
-} = abortable;
-var wss = new WebSocketStream("ws://127.0.0.1:44818", {
-  signal
+if (globalThis?.openIsolatedWebApp) {
+  await openIsolatedWebApp(`?name=TCPServerSocket`);
+} else {
+  setTitle(`?name=TCPServerSocket`);
+}
+
+await scheduler.postTask(() => {}, {
+  delay: 1000,
 });
+
+var u8 = new Uint8Array(1024 ** 2 * 20).fill(1);
+var decoder = new TextDecoder();
+var encoder = new TextEncoder();
+
+var wss = new WebSocketStream("ws://127.0.0.1:44818");
 console.log(wss);
 
 var { readable, writable } = await wss.opened.catch(console.warn);
@@ -274,8 +266,8 @@ var reader = readable.getReader();
 var writer = writable.getWriter();
 
 Promise.allSettled([writable.closed, readable.closed, wss.closed]).then((
-  args,
-) => console.log(args)).catch(console.error);
+  [,,{value}],
+) => console.log(value)).catch(console.error);
 
 async function stream(data) {
   const len = 65536;
