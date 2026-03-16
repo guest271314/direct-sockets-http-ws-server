@@ -1,5 +1,5 @@
 import { WebSocketConnection } from "./websocket-server.js";
-import { getChunkData } from "./get-chunked-data.js";
+import { getChunkedData } from "./get-chunked-data.js";
 // Get Request-Line and Headers
 // TODO: Get request line URI, protocol
 function getHeaders(r) {
