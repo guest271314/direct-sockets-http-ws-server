@@ -13,6 +13,9 @@
     "scope": "/",
     "permissions_policy": {
       "cross-origin-isolated": ["self"],
-      "direct-sockets": ["self"]
+      "direct-sockets": ["self"],
+      "direct-sockets-private": ["self"],
+      "local-network": ["self"],
+      "loopback-network": ["self"]
     }
   }
